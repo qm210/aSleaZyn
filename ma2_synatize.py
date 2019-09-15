@@ -1,0 +1,1 @@
+/home/matze/py/aMaySyn/ma2_synatize.py
