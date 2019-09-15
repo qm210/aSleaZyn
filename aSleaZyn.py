@@ -12,9 +12,10 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QStringListModel, QItemSelectionModel
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAbstractItemView
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAbstractItemView, QFileDialog
 from PyQt5.QtMultimedia import QAudioOutput, QAudioFormat, QAudioDeviceInfo, QAudio
 import json
+from os import path
 
 from aSleaZynUI import Ui_MainWindow
 from aSleaZynModels import TrackModel, ModuleModel, PatternModel, NoteModel
@@ -26,8 +27,6 @@ class SleaZynth(QMainWindow):
 
     texsize = 512
     samplerate = 44100
-    initVolume = 1
-    shaderHeader = '#version 130\n uniform float iTexSize;\n uniform float iBlockOffset;\n uniform float iSampleRate;\n\n'
 
     def __init__(self):
         QMainWindow.__init__(self)
@@ -47,6 +46,11 @@ class SleaZynth(QMainWindow):
         self.ui.btnChooseFilename.clicked.connect(self.loadMayson)
         self.ui.btnImport.clicked.connect(self.importMayson)
         self.ui.btnExport.clicked.connect(self.exportChangedMayson)
+
+        self.ui.editFilename.editingFinished.connect(self.updateStateFromUI)
+        self.ui.editBPM.editingFinished.connect(self.updateStateFromUI)
+        self.ui.spinBOffset.valueChanged.connect(self.updateStateFromUI)
+        self.ui.spinBStop.valueChanged.connect(self.updateStateFromUI)
 
         self.ui.editTrackName.textChanged.connect(self.trackSetName)
         self.ui.spinTrackVolume.valueChanged.connect(self.trackSetVolume)
@@ -89,7 +93,7 @@ class SleaZynth(QMainWindow):
 
 
     def initState(self):
-        self.state = {'maysonFile': ''}
+        self.state = {}
         self.info = {}
         self.patterns = []
         self.synths = []
@@ -100,6 +104,7 @@ class SleaZynth(QMainWindow):
         if name == '':
             return
         self.state['maysonFile'] = name
+        self.state['title'], self.state['synFile'] = self.getTitleAndSynFromMayson(name)
         self.autoSave()
 
     def importMayson(self):
@@ -111,6 +116,7 @@ class SleaZynth(QMainWindow):
             return
 
         self.info = maysonData['info']
+        self.info.update({'title': self.state['title']})
         self.trackModel.tracks = maysonData['tracks']
         self.patternModel.patterns = maysonData['patterns']
         self.synthModel.setStringList(maysonData['synths'])
@@ -153,7 +159,11 @@ class SleaZynth(QMainWindow):
         QApplication.quit()
 
     def updateStateFromUI(self):
-        self.state.update({'maysonFile', self.ui.editFilename.text()})
+        self.state.update({'maysonFile': self.ui.editFilename.text()})
+        title, synFile = self.getTitleAndSynFromMayson(self.state['maysonFile'])
+        self.state.update({'synFile': synFile})
+        self.state.update({'title': title})
+        self.info['title'] = title
         self.info['BPM'] = self.ui.editBPM.text()
         self.info['B_offset'] = self.ui.spinBOffset.value()
         self.info['B_stop'] = self.ui.spinBStop.value()
@@ -179,7 +189,7 @@ class SleaZynth(QMainWindow):
         except FileNotFoundError:
             pass
 
-        if self.state['maysonFile'] == '':
+        if 'maysonFile' not in self.state or self.state['maysonFile'] == '':
             self.loadMayson()
 
         self.importMayson()
@@ -195,6 +205,11 @@ class SleaZynth(QMainWindow):
             return patternNames.index(name)
         else:
             return None
+
+    def getTitleAndSynFromMayson(self, maysonFile):
+        synFile = '.'.join(maysonFile.split('.')[:-1]) + '.syn'
+        title = '.'.join(path.basename(maysonFile).split('.')[:-1])
+        return title, synFile
 
     def placeholder(self):
         print("FUNCTION NOT IMPLEMENTED. Sorrriiiiiiieee! (not sorry.)")
@@ -313,18 +328,25 @@ class SleaZynth(QMainWindow):
         self.audioformat.setByteOrder(QAudioFormat.LittleEndian)
         self.audioformat.setSampleType(QAudioFormat.Float)
         self.audiooutput = QAudioOutput(self.audioformat)
-        self.audiooutput.setVolume(self.initVolume)
+        self.audiooutput.setVolume(1.0)
 
     def renderModule(self):
-        #self.codeEditor.insertPlainText(source)
-        #self.codeEditor.ensureCursorVisible()
-        pass
+        self.placeholder() # TODO remove the onlyModule functionality from aMaySynBuilder and place it here!
 
     def renderTrack(self):
-        pass
+        self.render(aMaySynBuilder([self.track()], self.patternModel.patterns, self.state['synFile'], self.info))
 
     def renderSong(self):
-        pass
+        self.render(aMaySynBuilder(self.trackModel.tracks, self.patternModel.patterns, self.state['synFile'], self.info))
+
+    def render(self, amaysyn):
+        shader = amaysyn.build()
+        self.ui.codeEditor.clear()
+        self.ui.codeEditor.insertPlainText(shader.replace(4*' ','\t').replace(3*' ', '\t'))
+        self.ui.codeEditor.ensureCursorVisible()
+
+        amaysyn.compileShader(shader)
+        del amaysyn
 
 ################################################################################################
 

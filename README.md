@@ -7,7 +7,21 @@ in order to execute aSleaZyn, you have to (have PyQt5 and) have set QT_PLUGIN_PA
 also, you have to have a copy of
 
 	./ma2_synatize.py
+	./ma2_synatize_defaults.py
 	./template.matzethemightyemperor
+	./template.textureheader
+
+as well as, sadly, these not-really-working "filter" templates:
+
+	./template.allpass
+	./template.avghp
+	./template.avglp
+	./template.bandpass
+	./template.comb
+	./template.resohp
+	./template.resolp
+	./template.reverb
+
 
 these are part of aMaySyn, fetch from
 

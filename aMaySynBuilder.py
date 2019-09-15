@@ -1,71 +1,96 @@
 from struct import pack, unpack
 from itertools import accumulate
 from copy import deepcopy
+from os import path, mkdir
+from collections import namedtuple
 
+from SFXGLWidget import *
 from ma2_synatize import *
+from aMaySynClassPorts import *
 
 class aMaySynBuilder:
 
     templateFile = "template.matzethemightyemperor"
 
-    def __init__(self, title, tracks, patterns, synths, drumkit, **kwargs):
-        self.title = title
-        self.tracks = tracks
-        self.patterns = patterns
-        self.synths = synths
-        self.drumkit = drumkit
+    shaderHeader = '#version 130\n uniform float iTexSize;\n uniform float iBlockOffset;\n uniform float iSampleRate;\n\n'
 
-        self.MODE_headless = False
+    def __init__(self, tracks, patterns, synfile = None, info = None, **kwargs):
+        self.tracks = [decodeTrack(t) for t in tracks]
+        self.patterns = [decodePattern(p) for p in patterns]
+        self.synfile = synfile
+        self.info = info
+
         self.MODE_debug = False
+        self.MODE_headless = False
+        self.MODE_renderwav = kwargs.pop('renderWAV') if 'renderWAV' in kwargs else False
+        if self.MODE_renderwav:
+            self.initWavOut()
 
+        self.synths = None
+        self.drumkit = None
         self.synatize_form_list = None
         self.synatize_main_list = None
         self.synatize_param_list = None
+        self.stored_randoms = []
+        if self.aMaySynFileExists():
+            self.aMaySynatize()
 
-        self.B_offset = 0
-        self.B_stop = float('Inf')
-        self.module_shift = 0
+        self.module_shift = kwargs.pop('module_shift') if 'module_shift' in kwargs else 0
 
-    def setInterval(self, from_, to_):
-        self.B_offset = from_
-        self.B_stop = to_
 
-    def aMaySynatize(self, synfile, reshuffle_randoms = False):
-        old_drumkit = self.drumkit
+    def getInfo(self, key):
+        try:
+            info = self.info[key]
+        except:
+            print("Tried to build GLSL without having provided all required information (BPM etc.). Call getInfo() beforehand!")
+            raise ValueError
+        else:
+            return info
 
-        def_synths = ['D_Drums', 'G_GFX', '__None']
-        def_drumkit = ['SideChn']
+    def initWavOut(self, outdir = None):
+        self.MODE_renderwav = True
+        self.outdir = outdir or 'out/'
+
+        if not path.isdir('./' + self.outdir):
+            mkdir(self.outdir)
+
+    def aMaySynatize(self, synfile = None,  reshuffle_randoms = False):
+        if synfile is not None:
+            self.synfile = synfile
+        if not self.aMaySynFileExists():
+            print(f"Don't have a valid aMaySyn-File ({self.synfile}). No can't do.\n")
+            raise FileNotFoundError
 
         self.synatize_form_list, self.synatize_main_list, drumkit, self.stored_randoms, self.synatize_param_list \
-            = synatize(synfile, stored_randoms = self.stored_randoms, reshuffle_randoms = reshuffle_randoms)
+            = synatize(self.synfile, stored_randoms = self.stored_randoms, reshuffle_randoms = reshuffle_randoms)
 
+        def_synths = ['D_Drums', 'G_GFX', '__None']
         self.synths = ['I_' + m['id'] for m in self.synatize_main_list if m['type']=='main']
         self.synths.extend(def_synths)
 
+        def_drumkit = ['SideChn']
         self.drumkit = def_drumkit + drumkit
 
-        # remove the 'update' functionality, the idea is: when adding new synths, rerendering your .mayson with aMaySyn, you can re-import it automatically
+    def aMaySynFileExists(self):
+        return self.synfile is not None and path.exists(self.synfile)
 
-    def aMaySynInitialized(self):
-        return self.synatize_form_list is not None and self.synatize_main_list is not None and self.synatize_param_list is not None
+    def getWAVFileName(self, count):
+        return './' + self.outdir + '/' + self.getInfo('title') + '_' + str(count) + '.wav'
 
-    def getInfo(self, key):
-        if key == 'title':
-            return self.title
-        if key == 'B_offset':
-            return self.B_offset
-        if key == 'B_stop':
-            return self.B_stop
-        return None
+    def getWAVFileCount(self):
+        if not os.path.isdir('./' + self.outdir): return '001'
+        count = 1
+        while os.path.isfile(self.getWAVFileName(f'{count:03d}')): count += 1
+        return f'{count:03d}'
 
-    def buildGLSL(self, compileGL = False, renderWAV = False, onlyModule = False):
-        if not self.aMaySynInitialized():
-            print("Tried to build GLSL without having initialized aMay-Synatize. No can't do.")
-            return
+    def build(self, renderWAV = False, onlyModule = False):
+        if not self.aMaySynFileExists():
+            print(f"Tried to build GLSL without without valid aMaySyn-File ({self.synfile}). No can't do.\n")
+            raise FileNotFoundError
 
         filename = self.getInfo('title') + '.glsl'
 
-        if onlyModule:
+        if onlyModule: #             module_shift = self.getModule().mod_on
             test_track = deepcopy(self.tracks[self.current_track])
             test_module = deepcopy(self.getModule())
             test_module.move(0)
@@ -78,15 +103,14 @@ class aMaySynBuilder:
             offset = 0
             max_mod_off = test_module.getModuleOff()
 
-            # might need to shift
-            module_shift = self.getModule().mod_on
-            for part in self.getInfo('BPM').split():
-                bpm_point = float(part.split(':')[0])
-                if bpm_point <= module_shift:
-                    bpm_list = ['0:' + part.split(':')[1]]
-                else:
-                    bpm_list.append(str(bpm_point - module_shift) + ':' + part.split(':')[1])
-                print(part, module_shift, bpm_list)
+            if self.module_shift > 0:
+                for part in self.getInfo('BPM').split():
+                    bpm_point = float(part.split(':')[0])
+                    if bpm_point <= self.module_shift:
+                        bpm_list = ['0:' + part.split(':')[1]]
+                    else:
+                        bpm_list.append(str(bpm_point - self.module_shift) + ':' + part.split(':')[1])
+                    print(part, self.module_shift, bpm_list)
 
             if self.MODE_debug:
                 print(test_track)
@@ -94,7 +118,7 @@ class aMaySynBuilder:
                 print(patterns)
 
         else:
-            tracks = [t for t in self.tracks if t.modules and not t.mute] if self.track_solo is None else [self.tracks[self.track_solo]]
+            tracks = [t for t in self.tracks if t.modules and not t.mute]
             max_mod_off = min(max(t.getLastModuleOff() for t in tracks), self.getInfo('B_stop'))
             offset = self.getInfo('B_offset')
             loop_mode = self.getInfo('loop')
@@ -124,7 +148,7 @@ class aMaySynBuilder:
         glslcode = gf.read()
         gf.close()
 
-        self.loadSynths()
+        self.aMaySynatize(self.synfile)
         actually_used_synths = set(t.getSynthName() for t in tracks if not t.getSynthType() == '_')
         actually_used_drums = set(n.note_pitch for p in patterns if p.synth_type == 'D' for n in p.notes)
 
@@ -133,21 +157,14 @@ class aMaySynBuilder:
         self.synatized_code_syn, self.synatized_code_drum, paramcode, filtercode, self.last_synatized_forms = \
             synatize_build(self.synatize_form_list, self.synatize_main_list, self.synatize_param_list, actually_used_synths, actually_used_drums)
 
+        self.file_extra_information = ''
         if self.MODE_headless:
             print("ACTUALLY USED SYNTHS:", actually_used_synths)
-            names_of_actually_used_drums = [drumkit[d] for d in actually_used_drums]
+            names_of_actually_used_drums = [self.drumkit[d] for d in actually_used_drums]
             print("ACTUALLY USED DRUMS:", names_of_actually_used_drums)
             if len(actually_used_drums) == 1:
                 self.file_extra_information += names_of_actually_used_drums[0] + '_'
 
-	# TODO: would be really nice: option to not re-shuffle the last throw of randoms, but export these to WAV on choice... TODOTODOTODOTODO!
-	# TODO LATER: great plans -- live looping ability (how bout midi input?)
-        if self.stored_randoms:
-            timestamp = datetime.datetime.now().strftime('%Y/%m/%d %H:%M')[2:]
-            countID = self.file_extra_information + (str(self.getWAVFileCount()) if renderWAV else '(unsaved)')
-            with open(self.getInfo('title') + '.rnd', 'a') as of:
-                of.write(timestamp + '\t' + countID + '\t' \
-                                   + '\t'.join((rnd['id'] + '=' + str(rnd['value'])) for rnd in self.stored_randoms if rnd['store']) + '\n')
 
         # get release and predraw times
         syn_rel = []
@@ -345,7 +362,72 @@ class aMaySynBuilder:
 
         print("GLSL CODE WRITTEN (" + filename + ") - QM-compatible standalone fragment shader")
 
-        pyperclip.copy(glslcode)
+        return glslcode
 
-        if compileGL or renderWAV:
-            self.compileShader(glslcode, renderWAV)
+
+    def compileShader(self, shader, renderWAV = False):
+        if not shader:
+            print("you should give some shader to compileShader. shady...")
+            return
+
+        # TODO: would be really nice: option to not re-shuffle the last throw of randoms, but export these to WAV on choice... TODOTODOTODOTODO!
+        # TODO LATER: great plans -- live looping ability (how bout midi input?)
+            if self.stored_randoms:
+                timestamp = datetime.datetime.now().strftime('%Y/%m/%d %H:%M')[2:]
+                countID = self.file_extra_information + (str(self.getWAVFileCount()) if renderWAV else '(unsaved)')
+                with open(self.getInfo('title') + '.rnd', 'a') as of:
+                    of.write(timestamp + '\t' + countID + '\t' \
+                                    + '\t'.join((rnd['id'] + '=' + str(rnd['value'])) for rnd in self.stored_randoms if rnd['store']) + '\n')
+
+
+        full_shader = self.shaderHeader + shader
+
+        self.music = None
+
+        starttime = datetime.datetime.now()
+
+        samplerate = 44100
+        texsize = 512
+
+        glwidget = SFXGLWidget(self, duration = self.song_length, samplerate = samplerate, texsize = texsize)
+        self.log = glwidget.newShader(full_shader)
+        print(self.log)
+        self.music = glwidget.music
+        self.fmusic = glwidget.floatmusic
+        del glwidget
+
+        if self.music == None :
+            print('music is empty.')
+            return
+
+        if not self.MODE_headless:
+            pygame.mixer.pre_init(frequency=int(samplerate), size=-16, channels=2, buffer=4096)
+            pygame.init()
+            pygame.mixer.init()
+            pygame.mixer.stop()
+            pygame.mixer.Sound(buffer=self.music).play()
+
+        endtime = datetime.datetime.now()
+        el = endtime - starttime
+
+        print("Execution time", str(el.total_seconds()) + 's')
+
+        if renderWAV:
+            sound_channels = 2
+            sound_samplewidth = 4
+            total_samples = int(self.song_length * samplerate * sound_channels * sound_samplewidth) + 1
+
+            sfile = wave.open(self.getWAVFileName(self.file_extra_information + self.getWAVFileCount()), 'w')
+            sfile.setframerate(samplerate)
+            sfile.setnchannels(sound_channels)
+            sfile.setsampwidth(sound_samplewidth)
+            sfile.writeframesraw(self.music[:total_samples])
+            sfile.close()
+
+
+
+        if self.MODE_headless:
+            App.get_running_app().stop()
+
+        self.update()
+

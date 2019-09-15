@@ -18,10 +18,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-from PyQt5.QtWidgets import *
-from PyQt5.Qt import *
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
+from PyQt5.QtWidgets import QOpenGLWidget
+from PyQt5.QtCore import QObject
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import datetime
