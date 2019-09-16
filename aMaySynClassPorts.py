@@ -10,6 +10,8 @@ def decodeTrack(tDict):
         synth = tDict['current_synth']
     )
     track.modules = [Module(m['mod_on'], decodePattern(m['pattern']), m['transpose']) for m in tDict['modules']]
+    track.par_norm = tDict['par_norm']
+    track.mute = tDict['mute']
     return track
 
 def decodePattern(pDict):

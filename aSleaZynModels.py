@@ -1,4 +1,5 @@
-from PyQt5.QtCore import QAbstractListModel, Qt
+from PyQt5.QtCore import QAbstractListModel, Qt, QModelIndex
+from copy import deepcopy
 
 class TrackModel(QAbstractListModel):
 
@@ -10,11 +11,24 @@ class TrackModel(QAbstractListModel):
         i = index.row()
         if role == Qt.DisplayRole:
             track = self.tracks[i]
-            return f"{track['name']} ({track['synths'][track['current_synth']][2:]}, {track['par_norm'] * 100 if not track['mute'] else 'MUTE'}%)"
+            return f"{track['name']} ({track['synths'][track['current_synth']][2:]}, {round(track['par_norm'] * 100) if not track['mute'] else 'MUTE'}%)"
 
     def rowCount(self, index = None):
         return len(self.tracks)
 
+    def removeRow(self, row, parent = QModelIndex()):
+        self.beginRemoveRows(parent, row, row)
+        self.tracks.remove(self.tracks[row])
+        self.endRemoveRows()
+
+    def cloneRow(self, row, parent = QModelIndex()):
+        self.beginInsertRows(parent, row, row)
+        self.tracks.insert(row, deepcopy(self.tracks[row]))
+        self.endInsertRows()
+
+    def setSynthList(self, synths):
+        for track in self.tracks:
+            track['synths'] = synths
 
 class ModuleModel(QAbstractListModel):
 

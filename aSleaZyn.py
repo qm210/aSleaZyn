@@ -14,13 +14,18 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QStringListModel, QItemSelectionModel, QIODevice, QByteArray, QBuffer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAbstractItemView, QFileDialog
 from PyQt5.QtMultimedia import QAudioOutput, QAudioFormat, QAudioDeviceInfo, QAudio
+from watchdog.observers import Observer
 from os import path
+from random import randint
+from shutil import move
 import json
 
 from aSleaZynUI import Ui_MainWindow
 from aSleaZynModels import TrackModel, ModuleModel, PatternModel, NoteModel
 from aMaySynBuilder import aMaySynBuilder
 from SFXGLWidget import SFXGLWidget
+from FileModifiedHandler import FileModifiedHandler
+
 
 class SleaZynth(QMainWindow):
 
@@ -41,12 +46,15 @@ class SleaZynth(QMainWindow):
         self.initState()
         self.autoLoad()
 
+        self.initAMaySyn()
         self.initAudio()
+
 
     def initSignals(self):
         self.ui.btnChooseFilename.clicked.connect(self.loadMayson)
         self.ui.btnImport.clicked.connect(self.importMayson)
         self.ui.btnExport.clicked.connect(self.exportChangedMayson)
+        self.ui.checkAutoRender.clicked.connect(self.toggleAutoRender)
 
         self.ui.editFilename.editingFinished.connect(self.updateStateFromUI)
         self.ui.editBPM.editingFinished.connect(self.updateStateFromUI)
@@ -60,9 +68,13 @@ class SleaZynth(QMainWindow):
         self.ui.spinModTranspose.valueChanged.connect(self.moduleSetTranspose)
         self.ui.btnApplyPattern.clicked.connect(self.moduleSetPattern)
         self.ui.btnApplyNote.clicked.connect(self.noteApplyChanges)
-        self.ui.btnTrackAdd.clicked.connect(self.placeholder)
-        self.ui.btnTrackClone.clicked.connect(self.placeholder)
-        self.ui.btnTrackDelete.clicked.connect(self.placeholder)
+        self.ui.btnTrackClone.clicked.connect(self.trackClone)
+        self.ui.btnTrackDelete.clicked.connect(self.trackDelete)
+        self.ui.btnRandomSynth.clicked.connect(self.trackSetRandomSynth)
+        self.ui.btnRandomizeSynth.clicked.connect(self.synthRandomize)
+        self.ui.btnSaveSynth.clicked.connect(self.synthHardClone)
+        self.ui.btnApplySynthName.clicked.connect(self.synthChangeName)
+        self.ui.btnReloadSyn.clicked.connect(self.loadSynthsFromSynFile)
 
         self.ui.btnRenderModule.clicked.connect(self.renderModule)
         self.ui.btnRenderTrack.clicked.connect(self.renderTrack)
@@ -90,16 +102,15 @@ class SleaZynth(QMainWindow):
         self.drumModel = QStringListModel()
         self.ui.drumList.setModel(self.drumModel)
 
-        # can do this in in qtDesigner? # do I need this at all?
-        self.ui.trackList.setEditTriggers(QAbstractItemView.DoubleClicked)
-
 
     def initState(self):
-        self.state = {}
+        self.state = {'maysonFile': '', 'autoRender': False}
         self.info = {}
         self.patterns = []
         self.synths = []
         self.drumkit = []
+        self.amaysyn = None
+        self.fileObserver = None
 
     def loadMayson(self):
         name, _ = QFileDialog.getOpenFileName(self, 'Load MAYSON file', '', 'aMaySyn export *.mayson(*.mayson)')
@@ -115,6 +126,7 @@ class SleaZynth(QMainWindow):
             maysonData = json.load(file)
             file.close()
         except FileNotFoundError:
+            print(".mayson file could not be loaded. check that it exists, and/or choose another one via '...' button.")
             return
 
         self.info = maysonData['info']
@@ -124,14 +136,15 @@ class SleaZynth(QMainWindow):
         self.synthModel.setStringList(maysonData['synths'])
         self.drumModel.setStringList(maysonData['drumkit'])
 
+        self.trackModel.layoutChanged.emit()
         if self.trackModel.rowCount() > 0:
             self.selectIndex(self.ui.trackList, self.trackModel, 0)
 
+        self.synthModel.layoutChanged.emit()
         if self.noteModel.rowCount() > 0:
             self.selectIndex(self.ui.noteList, self.noteModel, 0)
 
-        if self.synthModel.rowCount() > 0:
-            self.selectIndex(self.ui.synthList, self.synthModel, 0)
+        self.drumModel.layoutChanged.emit()
         if self.drumModel.rowCount() > 0:
             self.selectIndex(self.ui.drumList, self.drumModel, 0)
 
@@ -169,14 +182,16 @@ class SleaZynth(QMainWindow):
         self.info['BPM'] = self.ui.editBPM.text()
         self.info['B_offset'] = self.ui.spinBOffset.value()
         self.info['B_stop'] = self.ui.spinBStop.value()
+        if self.amaysyn is not None:
+            self.amaysyn.updateState(info = self.info, synFile = synFile)
 
     def applyStateToUI(self):
         self.ui.editFilename.setText(self.state['maysonFile'])
-
         # TODO: think about - do I want self.state['override']['BPM'] etc.??
         self.ui.editBPM.setText(self.info['BPM'])
         self.ui.spinBOffset.setValue(self.info['B_offset'])
         self.ui.spinBStop.setValue(self.info['B_stop'])
+        self.ui.checkAutoRender.setChecked(self.state['autoRender'])
 
     def autoSave(self):
         file = open(self.autoSaveFile, 'w')
@@ -193,8 +208,35 @@ class SleaZynth(QMainWindow):
 
         if 'maysonFile' not in self.state or self.state['maysonFile'] == '':
             self.loadMayson()
+        if 'autoRender' in self.state:
+            self.toggleAutoRender(self.state['autoRender'])
 
         self.importMayson()
+
+
+    def toggleAutoRender(self, checked):
+        self.state['autoRender'] = checked
+        self.autoSave()
+
+        if self.fileObserver is not None:
+            self.fileObserver.stop()
+            self.fileObserver.join()
+            self.fileObserver = None
+
+        if checked:
+            file = self.state['maysonFile']
+            eventHandler = FileModifiedHandler(file)
+            eventHandler.fileChanged.connect(self.importAndRender)
+            self.fileObserver = Observer()
+            self.fileObserver.schedule(eventHandler, path=path.dirname(file), recursive = False)
+            self.fileObserver.start()
+
+    def importAndRender(self):
+        self.importMayson()
+        if self.amaysyn is not None:
+            self.amaysyn.updateState(info = self.info)
+        self.renderSong() # TODO: store whether last rendered button was "Module", "Track" or "Song" --> do this again :)
+
 
 #################################### GENERAL HELPERS ###########################################
 
@@ -225,26 +267,31 @@ class SleaZynth(QMainWindow):
         return self.ui.trackList.currentIndex()
 
     def trackModelChanged(self):
-        return self.trackModel.dataChanged.emit(self.trackIndex(), self.trackIndex())
+        self.trackModel.dataChanged.emit(self.trackIndex(), self.trackIndex())
 
     def trackLoad(self, currentIndex):
         cTrack = self.trackModel.tracks[currentIndex.row()]
-
         self.ui.editTrackName.setText(cTrack['name'])
         self.ui.spinTrackVolume.setValue(100 * cTrack['par_norm'])
         self.ui.checkTrackMute.setChecked(not cTrack['mute'])
-
         self.moduleModel.setModules(cTrack['modules'])
         if len(cTrack['modules']) > 0:
             self.selectIndex(self.ui.moduleList, self.moduleModel, cTrack['current_module'])
             self.moduleLoad()
+        self.selectIndex(self.ui.synthList, self.synthModel, cTrack['current_synth'])
+
+    def trackClone(self):
+        self.trackModel.cloneRow(self.trackIndex().row())
+
+    def trackDelete(self):
+        self.trackModel.removeRow(self.trackIndex().row())
 
     def trackSetName(self, name):
         self.track()['name'] = name
         self.trackModelChanged()
 
     def trackSetVolume(self, value):
-        self.track()['par_norm'] = value * .01
+        self.track()['par_norm'] = round(value * .01, 3)
         self.trackModelChanged()
 
     def trackSetMute(self, state):
@@ -252,8 +299,13 @@ class SleaZynth(QMainWindow):
         self.trackModelChanged()
 
     def trackSetSynth(self, index):
-        self.track()['current_synth'] = self.track()['synths'].index(self.synthModel.data(index, Qt.DisplayRole))
+        self.track()['current_synth'] = self.synthModel.stringList().index(self.synthModel.data(index, Qt.DisplayRole)) #self.track()['synths'].index(self.synthModel.data(index, Qt.DisplayRole))
+        self.ui.editSynthName.setText(self.synthName())
         self.trackModelChanged()
+
+    def trackSetRandomSynth(self):
+        randomIndex = self.synthModel.createIndex(randint(0, len(self.instrumentSynths()) - 1), 0)
+        self.trackSetSynth(randomIndex)
 
 #################################### MODULE FUNCTIONALITY ######################################
 
@@ -264,7 +316,7 @@ class SleaZynth(QMainWindow):
         return self.ui.moduleList.currentIndex()
 
     def moduleModelChanged(self):
-        return self.moduleModel.dataChanged.emit(self.moduleIndex(), self.moduleIndex())
+        self.moduleModel.dataChanged.emit(self.moduleIndex(), self.moduleIndex())
 
     def moduleLoad(self, currentIndex = None):
         if currentIndex is None:
@@ -298,7 +350,6 @@ class SleaZynth(QMainWindow):
 
     def patternLoad(self, currentIndex):
         cPattern = self.patternModel.patterns[currentIndex]
-
         self.noteModel.setNotes(cPattern['notes'])
 
 #################################### NOTE FUNCTIONALITY ########################################
@@ -310,7 +361,7 @@ class SleaZynth(QMainWindow):
         return self.ui.noteList.currentIndex()
 
     def noteModelChanged(self):
-        return self.noteModel.dataChanged.emit(self.noteIndex(), self.noteIndex())
+        self.noteModel.dataChanged.emit(self.noteIndex(), self.noteIndex())
 
     def noteLoad(self, currentIndex):
         self.ui.editNote.setText(self.noteModel.data(currentIndex, Qt.DisplayRole))
@@ -319,7 +370,83 @@ class SleaZynth(QMainWindow):
     def noteApplyChanges(self):
         self.placeholder()
 
+###################################### SYNTH FUNCTIONALITY #####################################
+
+    def synth(self):
+        return self.synthModel.data(self.ui.synthList.currentIndex(), Qt.DisplayRole)
+
+    def synthName(self):
+        return self.synth()[2:]
+
+    def instrumentSynths(self):
+        return [I_synth for I_synth in self.synthModel.stringList() if I_synth[0] == 'I']
+
+    def synthRandomize(self):
+        self.amaysyn.aMaySynatize(reshuffle_randoms = True)
+
+    def synthHardClone(self):
+        # in aSleaZyn, cloning is only implemented for synths (not drums), because the idea is to design your drums via Drumatize
+        count = 0
+        oldID = self.synthName()
+        synths = self.instrumentSynths()
+        while True:
+            formID = oldID + '.' + str(count)
+            print("TRYING", formID, synths)
+            if 'I_' + formID not in synths: break
+            count += 1
+
+        try:
+            formTemplate = next(form for form in self.amaysyn.last_synatized_forms if form['id'] == oldID)
+            formType = formTemplate['type']
+            formMode = formTemplate['mode']
+            formBody = ' '.join(key + '=' + formTemplate[key] for key in formTemplate if key not in  ['type', 'id', 'mode'])
+            if formMode: formBody += ' mode=' + ','.join(formMode)
+        except StopIteration:
+            print("Current synth is not compiled yet. Do so and try again.")
+            return
+        except:
+            print("could not CLONE HARD:", formID, formTemplate)
+            raise
+        else:
+            with open(self.state['synFile'], mode='a') as filehandle:
+                filehandle.write('\n' + formType + 4*' ' + formID + 4*' ' + formBody)
+            self.loadSynthsFromSynthFile()
+
+    def synthChangeName(self):
+        if self.synth()[0] != 'I':
+            print("Nah. Select an instrument synth (I_blabloo)")
+            return
+        newID = self.ui.editSynthName.text()
+        if newID == '':
+            return
+        formID = self.synthName()
+        tmpFile = self.state['synFile'] + '.tmp'
+        move(self.state['synFile'], tmpFile)
+        with open(tmpFile, mode='r') as tmp_handle:
+            with open(self.state['synFile'], mode='w') as new_handle:
+                for line in tmp_handle.readlines():
+                    lineparse = line.split()
+                    if len(lineparse)>2 and lineparse[0] in ['main', 'maindrum'] and lineparse[1] == formID:
+                        new_handle.write(line.replace(' '+formID+' ', ' '+newID+' '))
+                    else:
+                        new_handle.write(line)
+        self.loadSynthsFromSynFile()
+
+    def loadSynthsFromSynFile(self):
+        self.amaysyn.aMaySynatize()
+        self.synthModel.setStringList(self.amaysyn.synths)
+        self.synthModel.dataChanged.emit(self.synthModel.createIndex(0, 0), self.synthModel.createIndex(self.synthModel.rowCount(), 0))
+        self.drumModel.setStringList(self.amaysyn.drumkit)
+        self.drumModel.dataChanged.emit(self.drumModel.createIndex(0, 0), self.drumModel.createIndex(self.drumModel.rowCount(), 0))
+        self.trackModel.setSynthList(self.amaysyn.synths)
+        self.trackModelChanged()
+
+# TODO: function to change drumkit order / assignment?
+
 ######################################## SleaZYNTHesizer #######################################
+
+    def initAMaySyn(self):
+        self.amaysyn = aMaySynBuilder(self, self.state['synFile'], self.info)
 
     def initAudio(self):
         self.audioformat = QAudioFormat()
@@ -336,21 +463,24 @@ class SleaZynth(QMainWindow):
         self.audiooutput.stop()
 
     def renderModule(self):
-        self.placeholder() # TODO remove the onlyModule functionality from aMaySynBuilder and place it here!
+        self.placeholder()
+        #shader = self.amaysyn.build(tracks = [self.track()], patterns = [self.module()['pattern']], onlyModule = self.module()) # module_shift = self.module()['mod_on']
+        #self.executeShader(shader)
 
     def renderTrack(self):
-        self.render(aMaySynBuilder(self, [self.track()], self.patternModel.patterns, self.state['synFile'], self.info))
+        shader = self.amaysyn.build(tracks = [self.track()], patterns = self.patternModel.patterns)
+        self.executeShader(shader)
 
     def renderSong(self):
-        self.render(aMaySynBuilder(self, self.trackModel.tracks, self.patternModel.patterns, self.state['synFile'], self.info))
+        shader = self.amaysyn.build(tracks = self.trackModel.tracks, patterns = self.patternModel.patterns)
+        self.executeShader(shader)
 
-    def render(self, amaysyn):
-        shader = amaysyn.build()
+    def executeShader(self, shader):
         self.ui.codeEditor.clear()
         self.ui.codeEditor.insertPlainText(shader.replace(4*' ','\t').replace(3*' ', '\t'))
         self.ui.codeEditor.ensureCursorVisible()
 
-        self.bytearray = amaysyn.executeShader(shader, self.samplerate, self.texsize)
+        self.bytearray = self.amaysyn.executeShader(shader, self.samplerate, self.texsize)
         self.audiobuffer = QBuffer(self.bytearray)
         self.audiobuffer.open(QIODevice.ReadOnly)
         self.audiooutput.stop()

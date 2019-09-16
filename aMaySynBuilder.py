@@ -20,11 +20,9 @@ class aMaySynBuilder:
 
     outdir = './out/'
 
-    def __init__(self, parent, tracks, patterns, synfile = None, info = None, **kwargs):
+    def __init__(self, parent, synFile = None, info = None, **kwargs):
         self.parent = parent
-        self.tracks = [decodeTrack(t) for t in tracks]
-        self.patterns = [decodePattern(p) for p in patterns]
-        self.synfile = synfile
+        self.synFile = synFile
         self.info = info
 
         self.MODE_debug = False
@@ -38,12 +36,19 @@ class aMaySynBuilder:
         self.synatize_form_list = None
         self.synatize_main_list = None
         self.synatize_param_list = None
+        self.last_synatized_forms = None
         self.stored_randoms = []
         if self.aMaySynFileExists():
             self.aMaySynatize()
 
-        self.module_shift = kwargs.pop('module_shift') if 'module_shift' in kwargs else 0
 
+    def updateState(self, info = None, synFile = None, stored_randoms = None):
+        if info is not None:
+            self.info = info
+        if synFile is not None:
+            self.synFile = synFile
+        if stored_randoms is not None:
+            self.stored_randoms = stored_randoms
 
     def initWavOut(self, outdir = None):
         self.MODE_renderwav = True
@@ -53,15 +58,15 @@ class aMaySynBuilder:
         if not path.isdir('./' + self.outdir):
             mkdir(self.outdir)
 
-    def aMaySynatize(self, synfile = None,  reshuffle_randoms = False):
-        if synfile is not None:
-            self.synfile = synfile
+    def aMaySynatize(self, synFile = None,  reshuffle_randoms = False):
+        if synFile is not None:
+            self.synFile = synFile
         if not self.aMaySynFileExists():
-            print(f"Don't have a valid aMaySyn-File ({self.synfile}). No can't do.\n")
+            print(f"Don't have a valid aMaySyn-File ({self.synFile}). No can't do.\n")
             raise FileNotFoundError
 
         self.synatize_form_list, self.synatize_main_list, drumkit, self.stored_randoms, self.synatize_param_list \
-            = synatize(self.synfile, stored_randoms = self.stored_randoms, reshuffle_randoms = reshuffle_randoms)
+            = synatize(self.synFile, stored_randoms = self.stored_randoms, reshuffle_randoms = reshuffle_randoms)
 
         def_synths = ['D_Drums', 'G_GFX', '__None']
         self.synths = ['I_' + m['id'] for m in self.synatize_main_list if m['type']=='main']
@@ -70,8 +75,10 @@ class aMaySynBuilder:
         def_drumkit = ['SideChn']
         self.drumkit = def_drumkit + drumkit
 
+        _, _, _, _, self.last_synatized_forms = synatize_build(self.synatize_form_list, self.synatize_main_list, self.synatize_param_list, self.synths, self.drumkit)
+
     def aMaySynFileExists(self):
-        return self.synfile is not None and path.exists(self.synfile)
+        return self.synFile is not None and path.exists(self.synFile)
 
 ##################################### REQUIRED FUNCTION PORTS ###########################################
 
@@ -123,16 +130,21 @@ class aMaySynBuilder:
 
 ############################################### BUILD #####################################################
 
-    def build(self, renderWAV = False, onlyModule = False):
+    def build(self, tracks, patterns, renderWAV = False, onlyModule = None):
         if not self.aMaySynFileExists():
-            print(f"Tried to build GLSL without without valid aMaySyn-File ({self.synfile}). No can't do.\n")
+            print(f"Tried to build GLSL without without valid aMaySyn-File ({self.synFile}). No can't do.\n")
             raise FileNotFoundError
+
+        self.tracks = [decodeTrack(t) for t in tracks]
+        self.patterns = [decodePattern(p) for p in patterns]
 
         filename = self.getInfo('title') + '.glsl'
 
-        if onlyModule: #             module_shift = self.getModule().mod_on
-            test_track = deepcopy(self.tracks[self.current_track])
-            test_module = deepcopy(self.getModule())
+        if onlyModule is not None: #
+            print(type(onlyModule), type(self.tracks[0].modules[0]))
+            quit()
+            #test_track = deepcopy(next(track in self.tracks if onlyModule in track.modules))
+            test_module = deepcopy(onlyModule)
             test_module.move(0)
             test_track.modules = [test_module]
             test_track.selected_modules = test_track.modules
@@ -143,6 +155,7 @@ class aMaySynBuilder:
             offset = 0
             max_mod_off = test_module.getModuleOff()
 
+            self.module_shift = onlyModule.mod_on
             if self.module_shift > 0:
                 for part in self.getInfo('BPM').split():
                     bpm_point = float(part.split(':')[0])
@@ -191,7 +204,7 @@ class aMaySynBuilder:
         glslcode = gf.read()
         gf.close()
 
-        self.aMaySynatize(self.synfile)
+        self.aMaySynatize(self.synFile)
         actually_used_synths = set(t.getSynthName() for t in tracks if not t.getSynthType() == '_')
         actually_used_drums = set(n.note_pitch for p in patterns if p.synth_type == 'D' for n in p.notes)
 
