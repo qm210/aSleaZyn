@@ -60,6 +60,8 @@ class SleaZynth(QMainWindow):
         self.ui.editBPM.editingFinished.connect(self.updateStateFromUI)
         self.ui.spinBOffset.valueChanged.connect(self.updateStateFromUI)
         self.ui.spinBStop.valueChanged.connect(self.updateStateFromUI)
+        self.ui.btnApplyBPM.clicked.connect(self.placeholder)
+        self.ui.btnApplyBPM.hide()
 
         self.ui.editTrackName.textChanged.connect(self.trackSetName)
         self.ui.spinTrackVolume.valueChanged.connect(self.trackSetVolume)

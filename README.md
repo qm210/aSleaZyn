@@ -37,4 +37,4 @@ enjoy. the UI, especially :P
 
 - QM / Team210
 
-![it is sleeeeeazy!](https://github.com/qm210/aSleaZyn/blob/master/preview_Sep16.png?raw=true)
+![it is sleeeeeazy!](https://github.com/qm210/aSleaZyn/blob/master/preview_Sep17.png?raw=true)
