@@ -19,14 +19,16 @@
 #
 
 from PyQt5.QtWidgets import QOpenGLWidget
-from PyQt5.QtCore import QObject
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
-import datetime
-from numpy import *
-from struct import *
+from numpy import float32
+from math import ceil
+from struct import pack, unpack
 
-class SFXGLWidget(QOpenGLWidget,QObject):
+
+class SFXGLWidget(QOpenGLWidget):
 
     def __init__(self, parent, samplerate, duration, texsize, moreUniforms = {}):
         QOpenGLWidget.__init__(self, parent)
@@ -54,10 +56,10 @@ class SFXGLWidget(QOpenGLWidget,QObject):
 
         self.framebuffer = glGenFramebuffers(1)
         glBindFramebuffer(GL_FRAMEBUFFER, self.framebuffer)
-        print("Bound buffer.")
+        print("Bound buffer with id", self.framebuffer)
         self.texture = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, self.texture)
-        print("Bound texture with id ", self.texture)
+        print("Bound texture with id", self.texture)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.texsize, self.texsize, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.image)
         print("Teximage2D returned.")
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
@@ -66,6 +68,7 @@ class SFXGLWidget(QOpenGLWidget,QObject):
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
 
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.texture, 0)
+
 
     def newShader(self, source) :
 
@@ -76,6 +79,8 @@ class SFXGLWidget(QOpenGLWidget,QObject):
         status = glGetShaderiv(self.shader, GL_COMPILE_STATUS)
         if status != GL_TRUE :
             log = glGetShaderInfoLog(self.shader)
+            if not log:
+                return 'Error occurred in GL Shader, but info log was empty O.o'
             return log.decode('utf-8')
 
         self.program = glCreateProgram()
@@ -85,6 +90,8 @@ class SFXGLWidget(QOpenGLWidget,QObject):
         status = glGetProgramiv(self.program, GL_LINK_STATUS)
         if status != GL_TRUE :
             log = glGetProgramInfoLog(self.program)
+            if not log:
+                return 'Error occurred in GL Program. but info log was empty O.o'
             return log.decode('utf-8')
 
         glBindFramebuffer(GL_FRAMEBUFFER, self.framebuffer)

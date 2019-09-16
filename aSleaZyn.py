@@ -14,12 +14,13 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QStringListModel, QItemSelectionModel
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAbstractItemView, QFileDialog
 from PyQt5.QtMultimedia import QAudioOutput, QAudioFormat, QAudioDeviceInfo, QAudio
-import json
 from os import path
+import json
 
 from aSleaZynUI import Ui_MainWindow
 from aSleaZynModels import TrackModel, ModuleModel, PatternModel, NoteModel
 from aMaySynBuilder import aMaySynBuilder
+from SFXGLWidget import SFXGLWidget
 
 class SleaZynth(QMainWindow):
 
@@ -66,6 +67,7 @@ class SleaZynth(QMainWindow):
         self.ui.btnRenderModule.clicked.connect(self.renderModule)
         self.ui.btnRenderTrack.clicked.connect(self.renderTrack)
         self.ui.btnRenderSong.clicked.connect(self.renderSong)
+        self.ui.btnStopPlayback.clicked.connect(self.stopPlayback)
 
         #model/view signals
         self.ui.trackList.selectionModel().currentChanged.connect(self.trackLoad)
@@ -330,14 +332,17 @@ class SleaZynth(QMainWindow):
         self.audiooutput = QAudioOutput(self.audioformat)
         self.audiooutput.setVolume(1.0)
 
+    def stopPlayback(self):
+        self.audiooutput.stop()
+
     def renderModule(self):
         self.placeholder() # TODO remove the onlyModule functionality from aMaySynBuilder and place it here!
 
     def renderTrack(self):
-        self.render(aMaySynBuilder([self.track()], self.patternModel.patterns, self.state['synFile'], self.info))
+        self.render(aMaySynBuilder(self, [self.track()], self.patternModel.patterns, self.state['synFile'], self.info))
 
     def renderSong(self):
-        self.render(aMaySynBuilder(self.trackModel.tracks, self.patternModel.patterns, self.state['synFile'], self.info))
+        self.render(aMaySynBuilder(self, self.trackModel.tracks, self.patternModel.patterns, self.state['synFile'], self.info))
 
     def render(self, amaysyn):
         shader = amaysyn.build()
@@ -345,12 +350,15 @@ class SleaZynth(QMainWindow):
         self.ui.codeEditor.insertPlainText(shader.replace(4*' ','\t').replace(3*' ', '\t'))
         self.ui.codeEditor.ensureCursorVisible()
 
-        amaysyn.compileShader(shader)
-        del amaysyn
+        amaysyn.executeShader(shader, self.audiooutput, self.samplerate, self.texsize)
+
 
 ################################################################################################
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = SleaZynth()
-    sys.exit(app.exec_())
+    exitCode = app.exec_()
+    # print('\n'.join(repr(w) for w in app.allWidgets()))
+    sys.exit(exitCode)
