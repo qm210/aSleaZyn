@@ -11,7 +11,7 @@
 
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QStringListModel, QItemSelectionModel
+from PyQt5.QtCore import Qt, QStringListModel, QItemSelectionModel, QIODevice, QByteArray, QBuffer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QAbstractItemView, QFileDialog
 from PyQt5.QtMultimedia import QAudioOutput, QAudioFormat, QAudioDeviceInfo, QAudio
 from os import path
@@ -350,7 +350,12 @@ class SleaZynth(QMainWindow):
         self.ui.codeEditor.insertPlainText(shader.replace(4*' ','\t').replace(3*' ', '\t'))
         self.ui.codeEditor.ensureCursorVisible()
 
-        amaysyn.executeShader(shader, self.audiooutput, self.samplerate, self.texsize)
+        self.bytearray = amaysyn.executeShader(shader, self.samplerate, self.texsize)
+        self.audiobuffer = QBuffer(self.bytearray)
+        self.audiobuffer.open(QIODevice.ReadOnly)
+        self.audiooutput.stop()
+        self.audiooutput.start(self.audiobuffer)
+
 
 
 ################################################################################################

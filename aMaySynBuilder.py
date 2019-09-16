@@ -1,6 +1,5 @@
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import Qt, QIODevice, QByteArray, QBuffer
-from PyQt5.QtMultimedia import QAudioOutput, QAudioFormat, QAudioDeviceInfo, QAudio
+from PyQt5.QtCore import Qt, QByteArray
 from struct import pack, unpack
 from itertools import accumulate
 from copy import deepcopy
@@ -460,10 +459,10 @@ class aMaySynBuilder:
         return purged_code
 
 
-    def executeShader(self, shader, audiooutput, samplerate, texsize, renderWAV = False):
+    def executeShader(self, shader, samplerate, texsize, renderWAV = False):
         if not shader:
             print("you should give some shader to compileShader. shady boi...")
-            return
+            return None
 
         # TODO: would be really nice: option to not re-shuffle the last throw of randoms, but export these to WAV on choice... TODOTODOTODOTODO!
         # TODO LATER: great plans -- live looping ability (how bout midi input?)
@@ -488,14 +487,9 @@ class aMaySynBuilder:
 
         if not self.music:
             print('dämmit. music is empty.')
-            return
+            return None
 
-        if not self.MODE_headless:
-            self.bytearray = QByteArray(self.music)
-            self.audiobuffer = QBuffer(self.bytearray)
-            self.audiobuffer.open(QIODevice.ReadOnly)
-            audiooutput.stop()
-            audiooutput.start(self.audiobuffer)
+        self.bytearray = QByteArray(self.music)
 
         endtime = datetime.datetime.now()
         el = endtime - starttime
@@ -517,3 +511,4 @@ class aMaySynBuilder:
         if self.MODE_headless:
             QApplication.quit()
 
+        return self.bytearray
