@@ -221,7 +221,6 @@ class aMaySynBuilder:
             if len(actually_used_drums) == 1:
                 self.file_extra_information += names_of_actually_used_drums[0] + '_'
 
-
         # get release and predraw times
         syn_rel = []
         syn_pre = []

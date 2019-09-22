@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1089</width>
+    <width>1119</width>
     <height>819</height>
    </rect>
   </property>
@@ -148,15 +148,21 @@ border-width: 2px;</string>
       <height>221</height>
      </rect>
     </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
    </widget>
    <widget class="QListView" name="noteList">
     <property name="geometry">
      <rect>
       <x>820</x>
       <y>120</y>
-      <width>261</width>
+      <width>291</width>
       <height>221</height>
      </rect>
+    </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
     </property>
    </widget>
    <widget class="QPlainTextEdit" name="codeEditor">
@@ -164,7 +170,7 @@ border-width: 2px;</string>
      <rect>
       <x>400</x>
       <y>430</y>
-      <width>681</width>
+      <width>711</width>
       <height>341</height>
      </rect>
     </property>
@@ -259,7 +265,7 @@ border-width: 2px;</string>
      <rect>
       <x>860</x>
       <y>80</y>
-      <width>221</width>
+      <width>251</width>
       <height>31</height>
      </rect>
     </property>
@@ -372,7 +378,7 @@ border-width: 2px;</string>
      <rect>
       <x>820</x>
       <y>370</y>
-      <width>261</width>
+      <width>291</width>
       <height>31</height>
      </rect>
     </property>
@@ -394,18 +400,18 @@ border-width: 2px;</string>
      <rect>
       <x>1030</x>
       <y>340</y>
-      <width>51</width>
+      <width>81</width>
       <height>31</height>
      </rect>
     </property>
     <property name="text">
-     <string>^^</string>
+     <string>^^ apply</string>
     </property>
    </widget>
    <widget class="QCheckBox" name="checkAutoRender">
     <property name="geometry">
      <rect>
-      <x>600</x>
+      <x>620</x>
       <y>20</y>
       <width>201</width>
       <height>21</height>
@@ -421,7 +427,7 @@ border-width: 2px;</string>
    <widget class="QLineEdit" name="editFilename">
     <property name="geometry">
      <rect>
-      <x>140</x>
+      <x>50</x>
       <y>10</y>
       <width>451</width>
       <height>41</height>
@@ -431,20 +437,20 @@ border-width: 2px;</string>
    <widget class="QPushButton" name="btnImport">
     <property name="geometry">
      <rect>
-      <x>10</x>
+      <x>510</x>
       <y>10</y>
-      <width>81</width>
+      <width>101</width>
       <height>41</height>
      </rect>
     </property>
     <property name="text">
-     <string>Import</string>
+     <string>Re-Import</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btnChooseFilename">
     <property name="geometry">
      <rect>
-      <x>100</x>
+      <x>10</x>
       <y>10</y>
       <width>41</width>
       <height>41</height>
@@ -481,6 +487,12 @@ border-width: 2px;</string>
       <width>261</width>
       <height>371</height>
      </rect>
+    </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
+    <property name="editTriggers">
+     <set>QAbstractItemView::NoEditTriggers</set>
     </property>
    </widget>
    <widget class="QLabel" name="label">
@@ -524,18 +536,21 @@ border-width: 2px;</string>
       <height>201</height>
      </rect>
     </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
    </widget>
    <widget class="QPushButton" name="btnExport">
     <property name="geometry">
      <rect>
-      <x>810</x>
+      <x>840</x>
       <y>10</y>
       <width>271</width>
       <height>41</height>
      </rect>
     </property>
     <property name="text">
-     <string>Export with Changes</string>
+     <string>Export with Current Changes</string>
     </property>
    </widget>
    <widget class="QLabel" name="label_3">
@@ -697,7 +712,7 @@ PERKELE!</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1089</width>
+     <width>1119</width>
      <height>38</height>
     </rect>
    </property>
