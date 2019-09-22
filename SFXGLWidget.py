@@ -23,9 +23,9 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from numpy import float32
 from math import ceil
 from struct import pack, unpack
+import numpy as np
 
 
 class SFXGLWidget(QOpenGLWidget):
@@ -49,6 +49,9 @@ class SFXGLWidget(QOpenGLWidget):
         self.music = None
         self.floatmusic = None
         self.moreUniforms = moreUniforms
+        self.sequence_texture_handle = None
+        self.sequence_texture = None
+        self.sequence_texture_size = None
 
     def initializeGL(self):
         print("Init.")
@@ -70,7 +73,20 @@ class SFXGLWidget(QOpenGLWidget):
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.texture, 0)
 
 
-    def newShader(self, source) :
+    def initSequenceTexture(self, sequence_texture, sequence_texture_size):
+        self.sequence_texture = np.asarray(sequence_texture, dtype = np.uint8)
+        self.sequence_texture_size = np.float32(sequence_texture_size)
+
+        # port of NR4s C code...
+        self.sequence_texture_handle = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, self.sequence_texture_handle)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.sequence_texture_size, self.sequence_texture_size, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.sequence_texture)
+
+    def computeShader(self, source, useSequenceTexture = False) :
 
         self.shader = glCreateShader(GL_FRAGMENT_SHADER)
         glShaderSource(self.shader, source)
@@ -100,11 +116,15 @@ class SFXGLWidget(QOpenGLWidget):
         self.iTexSizeLocation = glGetUniformLocation(self.program, 'iTexSize')
         self.iBlockOffsetLocation = glGetUniformLocation(self.program, 'iBlockOffset')
         self.iSampleRateLocation = glGetUniformLocation(self.program, 'iSampleRate')
+        if useSequenceTexture:
+            self.sfx_sequence_texture_location = glGetUniformLocation(self.program, 'iSequence');
+            self.sfx_sequence_texture_width_location = glGetUniformLocation(self.program, 'iSequenceWidth');
+
 
         self.uniformLocation = {}
         for uniform in self.moreUniforms:
             self.uniformLocation[uniform] = glGetUniformLocation(self.program, uniform)
-            glUniform1f(self.uniformLocation[uniform], float32(self.moreUniforms[uniform]))
+            glUniform1f(self.uniformLocation[uniform], np.float32(self.moreUniforms[uniform]))
 
         OpenGL.UNSIGNED_BYTE_IMAGES_AS_STRING = True
         music = bytearray(self.nblocks*self.blocksize*4)
@@ -112,9 +132,15 @@ class SFXGLWidget(QOpenGLWidget):
         glViewport(0, 0, self.texsize, self.texsize)
 
         for i in range(self.nblocks) :
-            glUniform1f(self.iTexSizeLocation, float32(self.texsize))
-            glUniform1f(self.iBlockOffsetLocation, float32(i*self.blocksize))
-            glUniform1f(self.iSampleRateLocation, float32(self.samplerate))
+            glUniform1f(self.iTexSizeLocation, np.float32(self.texsize))
+            glUniform1f(self.iBlockOffsetLocation, np.float32(i*self.blocksize))
+            glUniform1f(self.iSampleRateLocation, np.float32(self.samplerate))
+
+            if useSequenceTexture:
+                glUniform1i(self.sfx_sequence_texture_location, 0)
+                glUniform1f(self.sfx_sequence_texture_width_location, self.sequence_texture_size)
+                glActiveTexture(GL_TEXTURE0)
+                glBindTexture(GL_TEXTURE_2D, self.sequence_texture_handle)
 
             glBegin(GL_QUADS)
             glVertex2f(-1,-1)
@@ -128,7 +154,7 @@ class SFXGLWidget(QOpenGLWidget):
             music[4*i*self.blocksize:4*(i+1)*self.blocksize] = glReadPixels(0, 0, self.texsize, self.texsize, GL_RGBA, GL_UNSIGNED_BYTE)
 
         music = unpack('<'+str(self.blocksize*self.nblocks*2)+'H', music)
-        music = (float32(music)-32768.)/32768.
+        music = (np.float32(music)-32768.)/32768.
         self.floatmusic = music
 
         music = pack('<'+str(self.blocksize*self.nblocks*2)+'f', *music)

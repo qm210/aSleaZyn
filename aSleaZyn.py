@@ -19,6 +19,7 @@ from os import path
 from random import randint
 from shutil import move
 from functools import partial
+from time import sleep
 import json
 
 from aSleaZynUI import Ui_MainWindow
@@ -51,6 +52,26 @@ class SleaZynth(QMainWindow):
         self.initAudio()
 
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+
+        if event.modifiers() & Qt.ControlModifier:
+
+            if event.key() == Qt.Key_S:
+                self.autoSave()
+
+            elif event.key() == Qt.Key_L:
+                self.autoLoad()
+
+            elif event.key() == Qt.Key_T:
+                self.renderWhateverWasLast()
+
+
+    def closeEvent(self, event):
+        QApplication.quit()
+
+
     def initSignals(self):
         self.ui.btnChooseFilename.clicked.connect(self.loadAndImportMayson)
         self.ui.btnImport.clicked.connect(self.importMayson)
@@ -63,6 +84,7 @@ class SleaZynth(QMainWindow):
         self.ui.spinBStop.valueChanged.connect(partial(self.updateStateFromUI, only = 'B_stop'))
         self.ui.btnApplyBPM.clicked.connect(self.placeholder)
         self.ui.btnApplyBPM.hide()
+        self.ui.checkWriteWAV.clicked.connect(partial(self.updateStateFromUI, only = 'writeWAV'))
 
         self.ui.editTrackName.textChanged.connect(self.trackSetName)
         self.ui.spinTrackVolume.valueChanged.connect(self.trackSetVolume)
@@ -109,7 +131,14 @@ class SleaZynth(QMainWindow):
 
 
     def initState(self):
-        self.state = {'maysonFile': '', 'autoRender': False, 'lastRendered': ''}
+        self.state = {
+            'maysonFile': '',
+            'autoRender': False,
+            'lastRendered': '',
+            'writeWAV': False,
+            'selectedTrack': 0,
+            'selectedModule': 0,
+            }
         self.info = {}
         self.patterns = []
         self.synths = []
@@ -127,12 +156,21 @@ class SleaZynth(QMainWindow):
         self.importMayson()
 
     def importMayson(self):
+        maysonData = {}
         try:
             file = open(self.state['maysonFile'], 'r')
             maysonData = json.load(file)
-            file.close()
         except FileNotFoundError:
-            print(".mayson file could not be loaded. check that it exists, and/or choose another one via '...' button.")
+            print(f"{self.state['maysonFile']} could not be imported. make sure that it exists, or choose another one.")
+            self.loadAndImportMayson()
+        except json.decoder.JSONDecodeError:
+            print(f"{self.state['maysonFile']} is changing right now, pause for 1 sec...")
+            sleep(1)
+            self.importMayson()
+        finally:
+            file.close()
+
+        if maysonData == {}:
             return
 
         self.info = maysonData['info']
@@ -143,12 +181,17 @@ class SleaZynth(QMainWindow):
         self.drumModel.setStringList(maysonData['drumkit'])
 
         self.trackModel.layoutChanged.emit()
-        if self.trackModel.rowCount() > 0:
-            self.selectIndex(self.ui.trackList, self.trackModel, 0)
+        if self.trackModel.rowCount() > self.state['selectedTrack']:
+            self.selectIndex(self.ui.trackList, self.trackModel, self.state['selectedTrack'])
 
-        self.synthModel.layoutChanged.emit()
+        if self.moduleModel.rowCount() > self.state['selectedModule']:
+            self.selectIndex(self.ui.moduleList, self.moduleModel, self.state['selectedModule'])
+
+        self.noteModel.layoutChanged.emit()
         if self.noteModel.rowCount() > 0:
             self.selectIndex(self.ui.noteList, self.noteModel, 0)
+
+        self.synthModel.layoutChanged.emit()
 
         self.drumModel.layoutChanged.emit()
         if self.drumModel.rowCount() > 0:
@@ -172,26 +215,21 @@ class SleaZynth(QMainWindow):
         json.dump(data, file)
         file.close()
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
-            self.close()
-
-    def closeEvent(self, event):
-        QApplication.quit()
-
     def updateStateFromUI(self, only = None):
         if only is None or only == 'maysonFile':
             self.state.update({'maysonFile': self.ui.editFilename.text()})
-            title, synFile = self.getTitleAndSynFromMayson(self.state['maysonFile'])
-            self.state.update({'synFile': synFile})
-            self.state.update({'title': title})
-            self.info['title'] = title
+        title, synFile = self.getTitleAndSynFromMayson(self.state['maysonFile'])
+        self.state.update({'synFile': synFile})
+        self.state.update({'title': title})
+        self.info['title'] = title
         if only is None or only == 'BPM':
             self.info['BPM'] = self.ui.editBPM.text()
         if only is None or only == 'B_offset':
             self.info['B_offset'] = self.ui.spinBOffset.value()
         if only is None or only == 'B_stop':
             self.info['B_stop'] = self.ui.spinBStop.value()
+        if only is None or only == 'writeWAV':
+            self.state['writeWAV'] = self.ui.checkWriteWAV.isChecked()
 
         if self.amaysyn is not None:
             self.amaysyn.updateState(info = self.info, synFile = synFile)
@@ -203,6 +241,7 @@ class SleaZynth(QMainWindow):
         self.ui.spinBOffset.setValue(self.info['B_offset'])
         self.ui.spinBStop.setValue(self.info['B_stop'])
         self.ui.checkAutoRender.setChecked(self.state['autoRender'])
+        self.ui.checkWriteWAV.setChecked(self.state['writeWAV'])
 
     def autoSave(self):
         file = open(self.autoSaveFile, 'w')
@@ -210,12 +249,16 @@ class SleaZynth(QMainWindow):
         file.close()
 
     def autoLoad(self):
+        loadState = {}
         try:
             file = open(self.autoSaveFile, 'r')
-            self.state = json.load(file)
+            loadState = json.load(file)
             file.close()
         except FileNotFoundError:
             pass
+
+        for key in loadState:
+            self.state[key] = loadState[key]
 
         if 'autoRender' in self.state:
             self.toggleAutoRender(self.state['autoRender'])
@@ -248,14 +291,7 @@ class SleaZynth(QMainWindow):
             print("why is aMaySyn not initialized? do something about it!")
             return
         self.amaysyn.updateState(info = self.info)
-
-        if self.state['lastRendered'] == 'module':
-            self.renderModule()
-        elif self.state['lastRendered'] == 'track':
-            self.renderTrack()
-        else:
-            self.renderSong()
-
+        self.renderWhateverWasLast()
 
 #################################### GENERAL HELPERS ###########################################
 
@@ -298,6 +334,7 @@ class SleaZynth(QMainWindow):
             self.selectIndex(self.ui.moduleList, self.moduleModel, cTrack['current_module'])
             self.moduleLoad()
         self.selectIndex(self.ui.synthList, self.synthModel, cTrack['current_synth'])
+        self.state['selectedTrack'] = currentIndex.row()
 
     def trackClone(self):
         self.trackModel.cloneRow(self.trackIndex().row())
@@ -347,7 +384,7 @@ class SleaZynth(QMainWindow):
             cModule = self.module()
         else:
             cModule = self.moduleModel.modules[currentIndex.row()]
-
+            self.state['selectedModule'] = currentIndex.row()
         self.ui.patternCombox.setCurrentIndex(self.patternIndexOfName(cModule['pattern']['name']))
         self.ui.spinModOn.setValue(cModule['mod_on'])
         self.ui.spinModTranspose.setValue(cModule['transpose'])
@@ -486,6 +523,14 @@ class SleaZynth(QMainWindow):
     def stopPlayback(self):
         self.audiooutput.stop()
 
+    def renderWhateverWasLast(self):
+        if self.state['lastRendered'] == 'module':
+            self.renderModule()
+        elif self.state['lastRendered'] == 'track':
+            self.renderTrack()
+        else:
+            self.renderSong()
+
     def renderModule(self):
         # self.state['lastRendered'] = 'module'
         self.placeholder()
@@ -494,7 +539,10 @@ class SleaZynth(QMainWindow):
 
     def renderTrack(self):
         self.state['lastRendered'] = 'track'
+        restoreMute = self.track()['mute']
+        self.track()['mute'] = False
         shader = self.amaysyn.build(tracks = [self.track()], patterns = self.patternModel.patterns)
+        self.track()['mute'] = restoreMute
         self.executeShader(shader)
 
     def renderSong(self):
@@ -507,7 +555,7 @@ class SleaZynth(QMainWindow):
         self.ui.codeEditor.insertPlainText(shader.replace(4*' ','\t').replace(3*' ', '\t'))
         self.ui.codeEditor.ensureCursorVisible()
 
-        self.bytearray = self.amaysyn.executeShader(shader, self.samplerate, self.texsize)
+        self.bytearray = self.amaysyn.executeShader(shader, self.samplerate, self.texsize, renderWAV = self.state['writeWAV'])
         self.audiobuffer = QBuffer(self.bytearray)
         self.audiobuffer.open(QIODevice.ReadOnly)
         self.audiooutput.stop()

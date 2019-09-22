@@ -8,6 +8,7 @@ from scipy.io import wavfile
 from math import ceil, sqrt
 import datetime
 import re
+import numpy as np
 
 from SFXGLWidget import SFXGLWidget
 from ma2_synatize import *
@@ -40,6 +41,10 @@ class aMaySynBuilder:
         self.stored_randoms = []
         if self.aMaySynFileExists():
             self.aMaySynatize()
+
+        self.fragment_shader = None
+        self.sequence_texture_size = 0
+        self.sequence_texture = []
 
 
     def updateState(self, info = None, synFile = None, stored_randoms = None):
@@ -375,6 +380,9 @@ class aMaySynBuilder:
         text += "const int sequence_texture_size = " + str(texs) + ";"
         text += '\n#endif\n'
 
+        self.sequence_texture_size = texs
+        self.sequence_texture = array
+
         # Write to file
         with open("sequence.h", "wt") as f:
             f.write(text)
@@ -403,7 +411,10 @@ class aMaySynBuilder:
 
         glslcode_frag = '#version 130\n' + glslcode.replace("//TEXTUREHEADER", texheadcode)
 
-        with open("sfx.frag", "w") as out_file:
+        # filename_frag = self.getInfo('title') + '.frag'
+        filename_frag = 'sfx.frag'
+
+        with open(filename_frag, 'w') as out_file:
             out_file.write(glslcode_frag)
 
         print("GLSL CODE WRITTEN (sfx.frag) -- NR4-compatible fragment shader")
@@ -420,6 +431,8 @@ class aMaySynBuilder:
             out_file.write(glslcode)
 
         print("GLSL CODE WRITTEN (" + filename + ") - QM-compatible standalone fragment shader")
+
+        self.fragment_shader = glslcode_frag
 
         return glslcode
 
@@ -473,7 +486,7 @@ class aMaySynBuilder:
 
     def executeShader(self, shader, samplerate, texsize, renderWAV = False):
         if not shader:
-            print("you should give some shader to compileShader. shady boi...")
+            print("you need to build() some shader before executeShader(). shady boi...")
             return None
 
         # TODO: would be really nice: option to not re-shuffle the last throw of randoms, but export these to WAV on choice... TODOTODOTODOTODO!
@@ -486,12 +499,19 @@ class aMaySynBuilder:
                                 + '\t'.join((rnd['id'] + '=' + str(rnd['value'])) for rnd in self.stored_randoms if rnd['store']) + '\n')
 
 
+        prefer_sequence_texture = False # if this is True: ignore 'shader' completely and use [self.fragment_shader, self.sequence_texture, self.sequence_texture_size]
+
         starttime = datetime.datetime.now()
 
         glwidget = SFXGLWidget(self.parent, duration = self.song_length, samplerate = samplerate, texsize = texsize)
         glwidget.show()
-        self.log = glwidget.newShader(shader)
-        print(self.log)
+        if prefer_sequence_texture and self.fragment_shader is not None:
+            glwidget.initSequenceTexture(self.sequence_texture, self.sequence_texture_size)
+            log = glwidget.computeShader(self.fragment_shader, useSequenceTexture = True)
+        else:
+            log = glwidget.computeShader(shader)
+
+        print(log)
         self.music = glwidget.music
         self.fmusic = glwidget.floatmusic
         glwidget.hide()

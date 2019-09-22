@@ -27,7 +27,7 @@ border-width: 2px;</string>
     <property name="geometry">
      <rect>
       <x>280</x>
-      <y>530</y>
+      <y>500</y>
       <width>111</width>
       <height>51</height>
      </rect>
@@ -79,7 +79,7 @@ border-width: 2px;</string>
     <property name="geometry">
      <rect>
       <x>280</x>
-      <y>470</y>
+      <y>450</y>
       <width>111</width>
       <height>51</height>
      </rect>
@@ -92,7 +92,7 @@ border-width: 2px;</string>
     <property name="geometry">
      <rect>
       <x>280</x>
-      <y>580</y>
+      <y>550</y>
       <width>111</width>
       <height>51</height>
      </rect>
@@ -557,7 +557,7 @@ border-width: 2px;</string>
     <property name="geometry">
      <rect>
       <x>280</x>
-      <y>430</y>
+      <y>420</y>
       <width>111</width>
       <height>31</height>
      </rect>
@@ -588,7 +588,7 @@ PERKELE!</string>
     <property name="geometry">
      <rect>
       <x>280</x>
-      <y>660</y>
+      <y>630</y>
       <width>111</width>
       <height>33</height>
      </rect>
@@ -604,13 +604,16 @@ PERKELE!</string>
     <property name="geometry">
      <rect>
       <x>280</x>
-      <y>630</y>
+      <y>600</y>
       <width>111</width>
       <height>33</height>
      </rect>
     </property>
     <property name="prefix">
      <string>from </string>
+    </property>
+    <property name="maximum">
+     <double>999.000000000000000</double>
     </property>
    </widget>
    <widget class="QLabel" name="label_4">
@@ -704,6 +707,19 @@ PERKELE!</string>
     </property>
     <property name="text">
      <string>apply</string>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="checkWriteWAV">
+    <property name="geometry">
+     <rect>
+      <x>280</x>
+      <y>670</y>
+      <width>111</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>write .WAV</string>
     </property>
    </widget>
   </widget>
