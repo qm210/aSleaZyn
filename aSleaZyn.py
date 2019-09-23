@@ -20,6 +20,7 @@ from random import randint
 from shutil import move
 from functools import partial
 from time import sleep
+from copy import deepcopy
 import json
 
 from aSleaZynUI import Ui_MainWindow
@@ -532,10 +533,17 @@ class SleaZynth(QMainWindow):
             self.renderSong()
 
     def renderModule(self):
-        # self.state['lastRendered'] = 'module'
-        self.placeholder()
-        #shader = self.amaysyn.build(tracks = [self.track()], patterns = [self.module()['pattern']], onlyModule = self.module()) # module_shift = self.module()['mod_on']
-        #self.executeShader(shader)
+        self.state['lastRendered'] = 'module'
+        restoreMute = self.track()['mute']
+        self.track()['mute'] = False
+        modInfo = deepcopy(self.info)
+        modInfo['B_offset'] = self.module()['mod_on']
+        modInfo['B_stop'] = self.module()['mod_on'] + self.module()['pattern']['length']
+        self.amaysyn.info = modInfo
+        shader = self.amaysyn.build(tracks = [self.track()], patterns = [self.module()['pattern']])
+        self.amaysyn.info = self.info
+        self.track()['mute'] = restoreMute
+        self.executeShader(shader)
 
     def renderTrack(self):
         self.state['lastRendered'] = 'track'

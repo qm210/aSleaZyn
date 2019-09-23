@@ -55,7 +55,6 @@ class SFXGLWidget(QOpenGLWidget):
 
     def initializeGL(self):
         print("Init.")
-        glEnable(GL_DEPTH_TEST)
 
         self.framebuffer = glGenFramebuffers(1)
         glBindFramebuffer(GL_FRAMEBUFFER, self.framebuffer)
@@ -74,17 +73,20 @@ class SFXGLWidget(QOpenGLWidget):
 
 
     def initSequenceTexture(self, sequence_texture, sequence_texture_size):
-        self.sequence_texture = np.asarray(sequence_texture, dtype = np.uint8)
+        print("Init Sequence Texture. DOES NOT WORK..!")
+        self.sequence_texture = np.array(sequence_texture, dtype = np.uint8)
         self.sequence_texture_size = np.float32(sequence_texture_size)
 
         # port of NR4s C code...
         self.sequence_texture_handle = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, self.sequence_texture_handle)
+        print("Bound texture with id", self.sequence_texture_handle)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.sequence_texture_size, self.sequence_texture_size, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.sequence_texture)
+
 
     def computeShader(self, source, useSequenceTexture = False) :
 
@@ -137,6 +139,7 @@ class SFXGLWidget(QOpenGLWidget):
             glUniform1f(self.iSampleRateLocation, np.float32(self.samplerate))
 
             if useSequenceTexture:
+                # DOES NOT WORK
                 glUniform1i(self.sfx_sequence_texture_location, 0)
                 glUniform1f(self.sfx_sequence_texture_width_location, self.sequence_texture_size)
                 glActiveTexture(GL_TEXTURE0)

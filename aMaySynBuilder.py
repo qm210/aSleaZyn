@@ -135,62 +135,47 @@ class aMaySynBuilder:
 
 ############################################### BUILD #####################################################
 
-    def build(self, tracks, patterns, renderWAV = False, onlyModule = None):
+    def build(self, tracks, patterns, renderWAV = False):
         if not self.aMaySynFileExists():
-            print(f"Tried to build GLSL without without valid aMaySyn-File ({self.synFile}). No can't do.\n")
+            print(f"Tried to build GLSL without valid aMaySyn-File ({self.synFile}). No can't do.\n")
             raise FileNotFoundError
 
-        self.tracks = [decodeTrack(t) for t in tracks]
-        self.patterns = [decodePattern(p) for p in patterns]
+        offset = self.getInfo('B_offset')
+        stop = self.getInfo('B_stop')
+        reduced_tracks = []
+        actually_used_patterns = []
+        for track in tracks:
+            t = decodeTrack(track)
+            if t.modules and not t.mute:
+                t.modules = [m for m in t.modules if m.getModuleOff() > offset and m.getModuleOn() < stop]
+                if t.modules:
+                    reduced_tracks.append(t)
+                    actually_used_patterns += [m.pattern for m in t.modules if m.pattern not in actually_used_patterns]
+        tracks = reduced_tracks
+        patterns = actually_used_patterns
+
+        #tracks = [t for t in self.tracks if t.modules and not t.mute]
+        max_mod_off = min(max(t.getLastModuleOff() for t in tracks), self.getInfo('B_stop')) # TODO. this min() should be redundant, check again
+        loop_mode = self.getInfo('loop')
 
         filename = self.getInfo('title') + '.glsl'
 
-        if onlyModule is not None: #
-            print(type(onlyModule), type(self.tracks[0].modules[0]))
-            quit()
-            #test_track = deepcopy(next(track in self.tracks if onlyModule in track.modules))
-            test_module = deepcopy(onlyModule)
-            test_module.move(0)
-            test_track.modules = [test_module]
-            test_track.selected_modules = test_track.modules
-            tracks = [test_track]
-            patterns = [test_module.pattern]
-            actually_used_patterns = patterns
-            loop_mode = 'seamless'
-            offset = 0
-            max_mod_off = test_module.getModuleOff()
+        for t in tracks:
+            t.selected_modules = [m for m in t.modules if m.pattern in patterns]
 
-            self.module_shift = onlyModule.mod_on
-            if self.module_shift > 0:
-                for part in self.getInfo('BPM').split():
-                    bpm_point = float(part.split(':')[0])
-                    if bpm_point <= self.module_shift:
-                        bpm_list = ['0:' + part.split(':')[1]]
-                    else:
-                        bpm_list.append(str(bpm_point - self.module_shift) + ':' + part.split(':')[1])
-                    print(part, self.module_shift, bpm_list)
+        print('\nUSE TRACKS: ', tracks, '\nUSE PATTERNS: ', patterns, '\n')
 
-            if self.MODE_debug:
-                print(test_track)
-                print(tracks)
-                print(patterns)
-
+        self.module_shift = offset
+        if self.module_shift > 0:
+            for part in self.getInfo('BPM').split():
+                bpm_point = float(part.split(':')[0])
+                if bpm_point <= self.module_shift:
+                    bpm_list = ['0:' + part.split(':')[1]]
+                else:
+                    bpm_list.append(str(bpm_point - self.module_shift) + ':' + part.split(':')[1])
+                print(part, self.module_shift, bpm_list)
         else:
-            tracks = [t for t in self.tracks if t.modules and not t.mute]
-            max_mod_off = min(max(t.getLastModuleOff() for t in tracks), self.getInfo('B_stop'))
-            offset = self.getInfo('B_offset')
-            loop_mode = self.getInfo('loop')
             bpm_list = self.getInfo('BPM').split()
-
-            actually_used_patterns = [m.pattern for t in tracks for m in t.modules] # if m.getModuleOff() >= offset and m.getModuleOn() <= max_mod_off
-            patterns = [p for p in self.patterns if p in actually_used_patterns]
-            patterns = actually_used_patterns
-
-            for t in tracks:
-                t.selected_modules = [m for m in t.modules if m.pattern in patterns]
-
-            print(tracks, '\n', actually_used_patterns, '\n', patterns)
-
 
         if self.MODE_headless:
             loop_mode = 'full'
@@ -411,8 +396,7 @@ class aMaySynBuilder:
 
         glslcode_frag = '#version 130\n' + glslcode.replace("//TEXTUREHEADER", texheadcode)
 
-        # filename_frag = self.getInfo('title') + '.frag'
-        filename_frag = 'sfx.frag'
+        filename_frag = 'sfx.frag' # f"{self.getInfo('title')}.frag"
 
         with open(filename_frag, 'w') as out_file:
             out_file.write(glslcode_frag)
@@ -500,15 +484,18 @@ class aMaySynBuilder:
 
 
         prefer_sequence_texture = False # if this is True: ignore 'shader' completely and use [self.fragment_shader, self.sequence_texture, self.sequence_texture_size]
+        if prefer_sequence_texture:
+            print("THIS DOES NOT WORK AND HAS TO BE FIXED. SET prefer_sequence_texture to FALSE!")
 
         starttime = datetime.datetime.now()
 
         glwidget = SFXGLWidget(self.parent, duration = self.song_length, samplerate = samplerate, texsize = texsize)
-        glwidget.show()
         if prefer_sequence_texture and self.fragment_shader is not None:
             glwidget.initSequenceTexture(self.sequence_texture, self.sequence_texture_size)
+            glwidget.show()
             log = glwidget.computeShader(self.fragment_shader, useSequenceTexture = True)
         else:
+            glwidget.show()
             log = glwidget.computeShader(shader)
 
         print(log)

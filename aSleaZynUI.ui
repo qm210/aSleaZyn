@@ -596,6 +596,9 @@ PERKELE!</string>
     <property name="prefix">
      <string>to </string>
     </property>
+    <property name="decimals">
+     <number>1</number>
+    </property>
     <property name="maximum">
      <double>999.000000000000000</double>
     </property>
@@ -611,6 +614,9 @@ PERKELE!</string>
     </property>
     <property name="prefix">
      <string>from </string>
+    </property>
+    <property name="decimals">
+     <number>1</number>
     </property>
     <property name="maximum">
      <double>999.000000000000000</double>

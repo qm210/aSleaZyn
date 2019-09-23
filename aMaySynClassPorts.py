@@ -33,7 +33,7 @@ def decodePattern(pDict):
     return pattern
 
 
-class Track():
+class Track:
 
     synths = []
     name = ''
@@ -211,7 +211,7 @@ class Track():
             m.tagged = False
 
 
-class Module():
+class Module:
 
     mod_on = 0
     pattern = None
@@ -256,7 +256,7 @@ class Module():
 
 
 
-class Pattern():
+class Pattern:
 
     def __init__(self, name = 'NJU', length = 1, synth_type = '_', max_note = 0, color = None):
         self.name = name
@@ -269,6 +269,9 @@ class Pattern():
 
     def __repr__(self):
         return ','.join(str(i) for i in [self.name, self.notes, self.length, self.current_note, self.synth_type])
+
+    def isDuplicateOf(self, other):
+        return len(self.notes) == len(other.notes) and all(nS == nO for nS, nO in zip(self.notes, other.notes))
 
     def setTypeParam(self, synth_type = None, max_note = None):
         if synth_type:
@@ -306,7 +309,7 @@ class Pattern():
         #return Color(random.uniform(.05,.95), .8, .88, mode = 'hsv').rgb
 
     def randomizeColor(self):
-        self.color = self.randomColor()
+        self.color = None #self.randomColor()
 
     def addNote(self, note = None, select = True, append = False, clone = False):
         if note is None:
@@ -359,7 +362,7 @@ class Pattern():
 
                 self.notes.append(Note( \
                     note_on = copy_on, \
-                    note_len = note_copy_len, \
+                    note_len = copy_len, \
                     note_pitch = n.note_pitch, \
                     note_pan = n.note_pan, \
                     note_vel = n.note_vel, \
@@ -516,7 +519,7 @@ class Pattern():
         for n in self.notes:
             print('on',n.note_on,'off',n.note_off,'len',n.note_len,'pitch',n.note_pitch,'pan',n.note_pan,'vel',n.note_vel,'slide',n.note_slide)
 
-class Note():
+class Note:
 
     def __init__(self, note_on=0, note_len=1, note_pitch=24, note_pan=0, note_vel=100, note_slide=0, note_aux=0):
         self.note_on = float(note_on)
@@ -532,6 +535,15 @@ class Note():
 
     def __repr__(self):
         return ','.join(str(i) for i in [self.note_on, self.note_off, self.note_pitch])
+
+    def __eq__(self, other):
+        return (self.note_on == other.note_on
+            and self.note_off == other.note_off
+            and self.note_pitch == other.note_pitch
+            and self.note_pan == other.note_pan
+            and self.note_vel == other.note_vel
+            and self.note_slide == other.note_slide
+            and self.note_aux == other.note_aux)
 
     def moveNoteOn(self, to):
         self.note_on = to
