@@ -154,14 +154,15 @@ class aMaySynBuilder:
         tracks = reduced_tracks
         patterns = actually_used_patterns
 
+        if len(tracks) == 0:
+            print("Nothing to play..!")
+            return 'Empty track :P'
+
         #tracks = [t for t in self.tracks if t.modules and not t.mute]
         max_mod_off = min(max(t.getLastModuleOff() for t in tracks), self.getInfo('B_stop')) # TODO. this min() should be redundant, check again
         loop_mode = self.getInfo('loop')
 
         filename = self.getInfo('title') + '.glsl'
-
-        for t in tracks:
-            t.selected_modules = [m for m in t.modules if m.pattern in patterns]
 
         print('\nUSE TRACKS: ', tracks, '\nUSE PATTERNS: ', patterns, '\n')
 
@@ -180,8 +181,11 @@ class aMaySynBuilder:
         if self.MODE_headless:
             loop_mode = 'full'
 
-        track_sep = [0] + list(accumulate([len(t.selected_modules) for t in tracks]))
+        track_sep = [0] + list(accumulate([len(t.modules) for t in tracks]))
         pattern_sep = [0] + list(accumulate([len(p.notes) for p in patterns]))
+
+        print(bpm_list)
+#        quit()
 
         nT  = str(len(tracks))
         nT1 = str(len(tracks) + 1)
@@ -302,16 +306,16 @@ class aMaySynBuilder:
         for t in tracks:
             tex += pack(fmt, float(syn_slide[t.getSynthIndex()]))
         for t in tracks:
-            for m in t.selected_modules:
+            for m in t.modules:
                 tex += pack(fmt, float(m.mod_on))
         for t in tracks:
-            for m in t.selected_modules:
+            for m in t.modules:
                 tex += pack(fmt, float(m.getModuleOff()))
         for t in tracks:
-            for m in t.selected_modules:
-                tex += pack(fmt, float(patterns.index(m.pattern))) # this could use some purge-non-used-patterns beforehand...
+            for m in t.modules:
+                tex += pack(fmt, float(patterns.index(m.pattern)))
         for t in tracks:
-            for m in t.selected_modules:
+            for m in t.modules:
                 tex += pack(fmt, float(m.transpose))
         for s in pattern_sep:
             tex += pack(fmt, float(s))

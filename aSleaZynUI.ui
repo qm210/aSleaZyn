@@ -350,6 +350,9 @@ border-width: 2px;</string>
     <property name="prefix">
      <string>@ </string>
     </property>
+    <property name="maximum">
+     <number>999</number>
+    </property>
    </widget>
    <widget class="QSpinBox" name="spinModTranspose">
     <property name="geometry">

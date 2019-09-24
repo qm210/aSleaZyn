@@ -367,7 +367,7 @@ class SleaZynth(QMainWindow):
 
     def trackSetRandomSynth(self):
         randomIndex = self.synthModel.createIndex(randint(0, len(self.instrumentSynths()) - 1), 0)
-        self.trackSetSynth(randomIndex)
+        self.ui.synthList.setCurrentIndex(randomIndex)
 
 #################################### MODULE FUNCTIONALITY ######################################
 

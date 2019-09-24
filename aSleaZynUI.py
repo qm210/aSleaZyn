@@ -108,6 +108,7 @@ class Ui_MainWindow(object):
         self.btnSaveSynth.setObjectName("btnSaveSynth")
         self.spinModOn = QtWidgets.QSpinBox(self.centralwidget)
         self.spinModOn.setGeometry(QtCore.QRect(550, 80, 101, 33))
+        self.spinModOn.setMaximum(999)
         self.spinModOn.setObjectName("spinModOn")
         self.spinModTranspose = QtWidgets.QSpinBox(self.centralwidget)
         self.spinModTranspose.setGeometry(QtCore.QRect(683, 80, 131, 33))
