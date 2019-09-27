@@ -12,7 +12,7 @@
 import sys
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QStringListModel, QItemSelectionModel, QIODevice, QByteArray, QBuffer
-from PyQt5.QtWidgets import QApplication, QMainWindow, QAbstractItemView, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QAbstractItemView, QFileDialog, QMessageBox
 from PyQt5.QtMultimedia import QAudioOutput, QAudioFormat, QAudioDeviceInfo, QAudio
 from watchdog.observers import Observer
 from os import path
@@ -630,6 +630,11 @@ class SleaZynth(QMainWindow):
         self.ui.codeEditor.clear()
         self.ui.codeEditor.insertPlainText(shader.replace(4*' ','\t').replace(3*' ', '\t'))
         self.ui.codeEditor.ensureCursorVisible()
+
+        sequenceLength = len(self.amaysyn.sequence_texture) if self.amaysyn.sequence_texture is not None else 0
+        if sequenceLength > pow(2, 14):
+            QMessageBox.critical(self, "I CAN'T", f"Until QM figured out how to implement the sequence texture in PyQt, reduce the sequence size by limiting the offset/stop positions or muting tracks.\nCurrent sequence length is:\n{sequenceLength} > {pow(2,14)}")
+            return
 
         self.bytearray = self.amaysyn.executeShader(shader, self.samplerate, self.texsize, renderWAV = self.state['writeWAV'])
         self.audiobuffer = QBuffer(self.bytearray)
