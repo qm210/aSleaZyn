@@ -83,8 +83,8 @@ class SleaZynth(QMainWindow):
         self.ui.editBPM.editingFinished.connect(partial(self.updateStateFromUI, only = 'BPM'))
         self.ui.spinBOffset.valueChanged.connect(partial(self.updateStateFromUI, only = 'B_offset'))
         self.ui.spinBStop.valueChanged.connect(partial(self.updateStateFromUI, only = 'B_stop'))
-        self.ui.btnApplyBPM.clicked.connect(self.placeholder)
-        self.ui.btnApplyBPM.hide()
+        self.ui.spinLevelSyn.valueChanged.connect(partial(self.updateStateFromUI, only= 'level_syn'))
+        self.ui.spinLevelDrum.valueChanged.connect(partial(self.updateStateFromUI, only= 'level_drum'))
         self.ui.checkWriteWAV.clicked.connect(partial(self.updateStateFromUI, only = 'writeWAV'))
 
         self.ui.editTrackName.textChanged.connect(self.trackSetName)
@@ -107,12 +107,14 @@ class SleaZynth(QMainWindow):
         self.ui.btnRenderSong.clicked.connect(self.renderSong)
         self.ui.btnStopPlayback.clicked.connect(self.stopPlayback)
 
-        #model/view signals
+        # model/view signals
         self.ui.trackList.selectionModel().currentChanged.connect(self.trackLoad)
         self.ui.patternCombox.currentIndexChanged.connect(self.patternLoad)
         self.ui.moduleList.selectionModel().currentChanged.connect(self.moduleLoad)
         self.ui.synthList.selectionModel().currentChanged.connect(self.trackSetSynth)
         self.ui.noteList.selectionModel().currentChanged.connect(self.noteLoad)
+        self.ui.drumList.selectionModel().currentChanged.connect(self.noteSetDrum)
+
 
     def initModelView(self):
         self.trackModel = TrackModel()
@@ -128,6 +130,7 @@ class SleaZynth(QMainWindow):
         self.drumModel = QStringListModel()
         self.ui.drumList.setModel(self.drumModel)
 
+        self.noteModel.dataChanged.connect(self.updateModulesWithChangedPattern)
         self.noteModel.reloadNoteParameters.connect(self.noteLoad)
 
 
@@ -182,11 +185,13 @@ class SleaZynth(QMainWindow):
         self.drumModel.setStringList(maysonData['drumkit'])
 
         self.trackModel.layoutChanged.emit()
-        if self.trackModel.rowCount() > self.state['selectedTrack']:
-            self.selectIndex(self.ui.trackList, self.trackModel, self.state['selectedTrack'])
+        if self.state['selectedTrack'] >= self.trackModel.rowCount():
+            self.state['selectedTrack'] = 0
+        self.selectIndex(self.ui.trackList, self.trackModel, self.state['selectedTrack'])
 
-        if self.moduleModel.rowCount() > self.state['selectedModule']:
-            self.selectIndex(self.ui.moduleList, self.moduleModel, self.state['selectedModule'])
+        if self.state['selectedModule'] >= self.moduleModel.rowCount():
+            self.state['selectedModule'] = 0
+        self.selectIndex(self.ui.moduleList, self.moduleModel, self.state['selectedModule'])
 
         self.noteModel.layoutChanged.emit()
         if self.noteModel.rowCount() > 0:
@@ -195,8 +200,8 @@ class SleaZynth(QMainWindow):
         self.synthModel.layoutChanged.emit()
 
         self.drumModel.layoutChanged.emit()
-        if self.drumModel.rowCount() > 0:
-            self.selectIndex(self.ui.drumList, self.drumModel, 0)
+        if self.drumIndex().isValid():
+            self.selectIndex(self.ui.drumList, self.drumModel, self.drumIndex().row())
 
         self.applyStateToUI()
 
@@ -229,6 +234,10 @@ class SleaZynth(QMainWindow):
             self.info['B_offset'] = self.ui.spinBOffset.value()
         if only is None or only == 'B_stop':
             self.info['B_stop'] = self.ui.spinBStop.value()
+        if only is None or only == 'level_syn':
+            self.info['level_syn'] == self.ui.spinLevelSyn.value()
+        if only is None or only == 'level_drum':
+            self.info['level_drum'] == self.ui.spinLevelDrum.value()
         if only is None or only == 'writeWAV':
             self.state['writeWAV'] = self.ui.checkWriteWAV.isChecked()
 
@@ -241,6 +250,8 @@ class SleaZynth(QMainWindow):
         self.ui.editBPM.setText(self.info['BPM'])
         self.ui.spinBOffset.setValue(self.info['B_offset'])
         self.ui.spinBStop.setValue(self.info['B_stop'])
+        self.ui.spinLevelSyn.setValue(self.info['level_syn'])
+        self.ui.spinLevelDrum.setValue(self.info['level_drum'])
         self.ui.checkAutoRender.setChecked(self.state['autoRender'])
         self.ui.checkWriteWAV.setChecked(self.state['writeWAV'])
 
@@ -317,7 +328,7 @@ class SleaZynth(QMainWindow):
 #################################### TRACK FUNCTIONALITY #######################################
 
     def track(self):
-        return self.trackModel.tracks[self.trackIndex().row()]
+        return self.trackModel.tracks[self.trackIndex().row()] if self.trackModel.rowCount() > 0 else None
 
     def trackIndex(self):
         return self.ui.trackList.currentIndex()
@@ -372,7 +383,7 @@ class SleaZynth(QMainWindow):
 #################################### MODULE FUNCTIONALITY ######################################
 
     def module(self):
-        return self.moduleModel.modules[self.moduleIndex().row()]
+        return self.moduleModel.modules[self.moduleIndex().row()] if self.moduleModel.rowCount() > 0 else None
 
     def moduleIndex(self):
         return self.ui.moduleList.currentIndex()
@@ -390,8 +401,11 @@ class SleaZynth(QMainWindow):
         self.ui.spinModOn.setValue(cModule['mod_on'])
         self.ui.spinModTranspose.setValue(cModule['transpose'])
 
+    def moduleAssignPattern(self, pattern):
+        self.module()['pattern'] = pattern # deepcopy(pattern)
+
     def moduleSetPattern(self):
-        self.module()['pattern'] = self.pattern()
+        self.moduleAssignPattern(self.pattern())
         self.moduleModelChanged()
 
     def moduleSetModOn(self, value):
@@ -405,7 +419,7 @@ class SleaZynth(QMainWindow):
 #################################### PATTERN FUNCTIONALITY #####################################
 
     def pattern(self):
-        return self.patternModel.patterns[self.patternIndex()]
+        return self.patternModel.patterns[self.patternIndex()] if self.patternModel.rowCount() > 0 else None
 
     def patternIndex(self):
         return self.ui.patternCombox.currentIndex()
@@ -414,10 +428,17 @@ class SleaZynth(QMainWindow):
         cPattern = self.patternModel.patterns[currentIndex]
         self.noteModel.setNotes(cPattern['notes'])
 
+    def updateModulesWithChangedPattern(self, rowBegin, rowEnd):
+        self.moduleAssignPattern(self.pattern())
+        self.moduleModelChanged()
+        self.trackModel.updateModulesWithChangedPattern(self.pattern())
+        self.trackModelChanged()
+
+
 #################################### NOTE FUNCTIONALITY ########################################
 
     def note(self):
-        return self.noteModel.notes[self.noteIndex().row()]
+        return self.noteModel.notes[self.noteIndex().row()] if self.noteModel.rowCount() > 0 else None
 
     def noteIndex(self):
         return self.ui.noteList.currentIndex()
@@ -432,7 +453,11 @@ class SleaZynth(QMainWindow):
     def noteApplyChanges(self):
         self.noteModel.changeByString(self.noteIndex(), self.ui.editNote.text())
 
-###################################### SYNTH FUNCTIONALITY #####################################
+    def noteSetDrum(self, currentIndex):
+        if self.drum() is not None:
+            self.noteModel.changeDrumTo(self.noteIndex(), self.drum())
+
+################################ SYNTH / DRUM FUNCTIONALITY ####################################
 
     def synth(self):
         return self.synthModel.data(self.ui.synthList.currentIndex(), Qt.DisplayRole)
@@ -443,11 +468,53 @@ class SleaZynth(QMainWindow):
     def instrumentSynths(self):
         return [I_synth for I_synth in self.synthModel.stringList() if I_synth[0] == 'I']
 
+    def drum(self):
+        if not self.drumIndex():
+            print("SHUBIDY")
+        if not self.drumIndex().isValid():
+            print("LOLOL PENIS")
+        return self.drumModel.data(self.drumIndex(), Qt.DisplayRole)
+
+    def drumIndex(self):
+        return self.ui.drumList.currentIndex()
+
     def synthRandomize(self):
         self.amaysyn.aMaySynatize(reshuffle_randoms = True)
 
     def synthHardClone(self):
-        # in aSleaZyn, cloning is only implemented for synths (not drums), because the idea is to design your drums via Drumatize
+        if self.synth()[0] == 'D':
+            self.synthHardCloneDrum(self)
+            return
+        else:
+            count = 0
+            oldID = self.synthName()
+            synths = self.instrumentSynths()
+            while True:
+                formID = oldID + '.' + str(count)
+                print("TRYING", formID, synths)
+                if 'I_' + formID not in synths: break
+                count += 1
+
+            try:
+                formTemplate = next(form for form in self.amaysyn.last_synatized_forms if form['id'] == oldID)
+                formType = formTemplate['type']
+                formMode = formTemplate['mode']
+                formBody = ' '.join(key + '=' + formTemplate[key] for key in formTemplate if key not in  ['type', 'id', 'mode'])
+                if formMode: formBody += ' mode=' + ','.join(formMode)
+            except StopIteration:
+                print("Current synth is not compiled yet. Do so and try again.")
+                return
+            except:
+                print("could not CLONE HARD:", formID, formTemplate)
+                raise
+            else:
+                with open(self.state['synFile'], mode='a') as filehandle:
+                    filehandle.write('\n' + formType + 4*' ' + formID + 4*' ' + formBody)
+                self.loadSynthsFromSynFile()
+
+    def synthHardDrum(self):
+        print("NOT IMPLEMENTED YET")
+        return
         count = 0
         oldID = self.synthName()
         synths = self.instrumentSynths()
@@ -472,7 +539,7 @@ class SleaZynth(QMainWindow):
         else:
             with open(self.state['synFile'], mode='a') as filehandle:
                 filehandle.write('\n' + formType + 4*' ' + formID + 4*' ' + formBody)
-            self.loadSynthsFromSynthFile()
+            self.loadSynthsFromSynFile()
 
     def synthChangeName(self):
         if self.synth()[0] != 'I':
@@ -533,6 +600,7 @@ class SleaZynth(QMainWindow):
             self.renderSong()
 
     def renderModule(self):
+        print(self.track(), self.module())
         self.state['lastRendered'] = 'module'
         restoreMute = self.track()['mute']
         self.track()['mute'] = False

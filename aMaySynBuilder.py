@@ -218,7 +218,7 @@ class aMaySynBuilder:
         # get release and predraw times
         syn_rel = []
         syn_pre = []
-        drum_rel = []
+        drum_rel = [0]
         max_rel = 0
         max_drum_rel = 0
         if self.MODE_debug: print(self.synatize_main_list)
@@ -389,7 +389,8 @@ class aMaySynBuilder:
             .replace("//LOOPCODE", loopcode)\
             .replace("//BEATHEADER", beatheader)\
             .replace("STEREO_DELAY", GLfloat(self.getInfo('stereo_delay')))\
-            .replace("TURN_DOWN", GLfloat(self.getInfo('turn_down')))
+            .replace("LEVEL_SYN", GLfloat(self.getInfo('level_syn')))\
+            .replace("LEVEL_DRUM", GLfloat(self.getInfo('level_drum')))
 
         glslcode = glslcode.replace('e+00','').replace('-0.)', ')').replace('+0.)', ')')
         glslcode = self.purgeExpendables(glslcode)

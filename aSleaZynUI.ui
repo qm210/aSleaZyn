@@ -286,7 +286,7 @@ border-width: 2px;</string>
    <widget class="QLineEdit" name="editBPM">
     <property name="geometry">
      <rect>
-      <x>400</x>
+      <x>360</x>
       <y>390</y>
       <width>231</width>
       <height>31</height>
@@ -630,7 +630,7 @@ PERKELE!</string>
      <rect>
       <x>280</x>
       <y>390</y>
-      <width>111</width>
+      <width>81</width>
       <height>31</height>
      </rect>
     </property>
@@ -705,19 +705,6 @@ PERKELE!</string>
      <string>Reload .Syn</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="btnApplyBPM">
-    <property name="geometry">
-     <rect>
-      <x>630</x>
-      <y>390</y>
-      <width>51</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>apply</string>
-    </property>
-   </widget>
    <widget class="QCheckBox" name="checkWriteWAV">
     <property name="geometry">
      <rect>
@@ -729,6 +716,69 @@ PERKELE!</string>
     </property>
     <property name="text">
      <string>write .WAV</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_6">
+    <property name="geometry">
+     <rect>
+      <x>600</x>
+      <y>390</y>
+      <width>41</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border: none;</string>
+    </property>
+    <property name="text">
+     <string>levels:</string>
+    </property>
+   </widget>
+   <widget class="QDoubleSpinBox" name="spinLevelSyn">
+    <property name="geometry">
+     <rect>
+      <x>650</x>
+      <y>390</y>
+      <width>81</width>
+      <height>33</height>
+     </rect>
+    </property>
+    <property name="prefix">
+     <string>S </string>
+    </property>
+    <property name="suffix">
+     <string/>
+    </property>
+    <property name="decimals">
+     <number>3</number>
+    </property>
+    <property name="maximum">
+     <double>9.990000000000000</double>
+    </property>
+    <property name="singleStep">
+     <double>0.050000000000000</double>
+    </property>
+   </widget>
+   <widget class="QDoubleSpinBox" name="spinLevelDrum">
+    <property name="geometry">
+     <rect>
+      <x>730</x>
+      <y>390</y>
+      <width>81</width>
+      <height>33</height>
+     </rect>
+    </property>
+    <property name="prefix">
+     <string>D </string>
+    </property>
+    <property name="decimals">
+     <number>3</number>
+    </property>
+    <property name="maximum">
+     <double>9.990000000000000</double>
+    </property>
+    <property name="singleStep">
+     <double>0.050000000000000</double>
     </property>
    </widget>
   </widget>

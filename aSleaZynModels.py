@@ -8,8 +8,10 @@ class TrackModel(QAbstractListModel):
         self.tracks = []
 
     def setTracks(self, tracks):
+        self.beginRemoveRows(QModelIndex(), self.createIndex(0,0).row(), self.createIndex(self.rowCount(),0).row())
         self.tracks = tracks
         self.layoutChanged.emit()
+        self.endRemoveRows()
 
     def data(self, index, role):
         i = index.row()
@@ -34,6 +36,12 @@ class TrackModel(QAbstractListModel):
         for track in self.tracks:
             track['synths'] = synths
 
+    def updateModulesWithChangedPattern(self, pattern):
+        for track in self.tracks:
+            for module in track['modules']:
+                if module['pattern']['name'] == pattern['name']:
+                    module['pattern'] = pattern # deepcopy(pattern)
+
 class ModuleModel(QAbstractListModel):
 
     def __init__ (self, *args, **kwargs):
@@ -41,8 +49,10 @@ class ModuleModel(QAbstractListModel):
         self.modules = []
 
     def setModules(self, modules):
+        self.beginRemoveRows(QModelIndex(), self.createIndex(0,0).row(), self.createIndex(self.rowCount(),0).row())
         self.modules = modules
         self.layoutChanged.emit()
+        self.endRemoveRows()
 
     def data(self, index, role):
         i = index.row()
@@ -61,8 +71,10 @@ class PatternModel(QAbstractListModel):
         self.patterns = []
 
     def setPatterns(self, patterns):
+        self.beginRemoveRows(QModelIndex(), self.createIndex(0,0).row(), self.createIndex(self.rowCount(),0).row())
         self.patterns = patterns
         self.layoutChanged.emit()
+        self.endRemoveRows()
 
     def data(self, index, role):
         i = index.row()
@@ -141,3 +153,15 @@ class NoteModel(QAbstractListModel):
         note['note_aux'] = float(detailStrings[2])
 
         self.dataChanged.emit(index, index)
+
+    def changeDrumTo(self, index, drum):
+        if drum is None or self.drumkit is None or not index.isValid():
+            return
+        if drum not in self.drumkit:
+            print("weird. this drum seems not to be in the drumkit?", drum, self.drumkit)
+            return
+        print("set drum to", drum)
+        self.notes[index.row()]['note_pitch'] = self.drumkit.index(drum)
+
+        self.dataChanged.emit(index, index)
+        self.reloadNoteParameters.emit(index)
