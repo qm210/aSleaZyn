@@ -470,9 +470,9 @@ class SleaZynth(QMainWindow):
 
     def drum(self):
         if not self.drumIndex():
-            print("SHUBIDY")
+            print("LOLOLOL DRUM INDEX IS NONE (should never happen)")
         if not self.drumIndex().isValid():
-            print("LOLOL PENIS")
+            print("LOLOLOL DRUM INDEX NOT VALID")
         return self.drumModel.data(self.drumIndex(), Qt.DisplayRole)
 
     def drumIndex(self):
@@ -631,7 +631,7 @@ class SleaZynth(QMainWindow):
         self.ui.codeEditor.insertPlainText(shader.replace(4*' ','\t').replace(3*' ', '\t'))
         self.ui.codeEditor.ensureCursorVisible()
 
-        sequenceLength = len(self.amaysyn.sequence_texture) if self.amaysyn.sequence_texture is not None else 0
+        sequenceLength = len(self.amaysyn.sequence) if self.amaysyn.sequence is not None else 0
         if sequenceLength > pow(2, 14):
             QMessageBox.critical(self, "I CAN'T", f"Until QM figured out how to implement the sequence texture in PyQt, reduce the sequence size by limiting the offset/stop positions or muting tracks.\nCurrent sequence length is:\n{sequenceLength} > {pow(2,14)}")
             return

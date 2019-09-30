@@ -43,8 +43,7 @@ class aMaySynBuilder:
             self.aMaySynatize()
 
         self.fragment_shader = None
-        self.sequence_texture_size = 0
-        self.sequence_texture = []
+        self.sequence = []
 
 
     def updateState(self, info = None, synFile = None, stored_randoms = None):
@@ -70,6 +69,7 @@ class aMaySynBuilder:
             print(f"Don't have a valid aMaySyn-File ({self.synFile}). No can't do.\n")
             raise FileNotFoundError
 
+        # TODO: Exception Handling instead of just quitting!!
         self.synatize_form_list, self.synatize_main_list, drumkit, self.stored_randoms, self.synatize_param_list \
             = synatize(self.synFile, stored_randoms = self.stored_randoms, reshuffle_randoms = reshuffle_randoms)
 
@@ -80,6 +80,7 @@ class aMaySynBuilder:
         def_drumkit = ['SideChn']
         self.drumkit = def_drumkit + drumkit
 
+        # TODO: might also require some exception handling, we'll see
         _, _, _, _, self.last_synatized_forms = synatize_build(self.synatize_form_list, self.synatize_main_list, self.synatize_param_list, self.synths, self.drumkit)
 
     def aMaySynFileExists(self):
@@ -110,7 +111,7 @@ class aMaySynBuilder:
         return f'{count:03d}'
 
     def getTimeOfBeat(self, beat, bpmlist = None):
-        return round(self.getTimeOfBeat_raw(beat, bpmlist = self.getInfo('BPM') if bpmlist is None else ' '.join(bpmlist)), 6)
+        return round(self.getTimeOfBeat_raw(beat, bpmlist = self.getInfo('BPM') if bpmlist is None else ' '.join(bpmlist)), 4)
 
     def getTimeOfBeat_raw(self, beat, bpmlist):
         beat = float(beat)
@@ -166,6 +167,7 @@ class aMaySynBuilder:
 
         print('\nUSE TRACKS: ', tracks, '\nUSE PATTERNS: ', patterns, '\n')
 
+        # TODO: after several changes, I'm not sure whether this is now still required or makes any sense at all, even..!
         self.module_shift = offset
         if self.module_shift > 0:
             for part in self.getInfo('BPM').split():
@@ -184,14 +186,11 @@ class aMaySynBuilder:
         track_sep = [0] + list(accumulate([len(t.modules) for t in tracks]))
         pattern_sep = [0] + list(accumulate([len(p.notes) for p in patterns]))
 
-        print(bpm_list)
-#        quit()
+        print('BPM LIST:', bpm_list)
 
         nT  = str(len(tracks))
-        nT1 = str(len(tracks) + 1)
         nM  = str(track_sep[-1])
         nP  = str(len(patterns))
-        nP1 = str(len(patterns) + 1)
         nN  = str(pattern_sep[-1])
 
         gf = open(self.templateFile)
@@ -288,89 +287,47 @@ class aMaySynBuilder:
 
         fmt = '@e'
         tex = b''
+        tex += b''.join(pack(fmt, float(s)) for s in track_sep)
+        tex += b''.join(pack(fmt, float(t.getSynthIndex()+1)) for t in tracks)
+        tex += b''.join(pack(fmt, float(t.getNorm())) for t in tracks)
+        tex += b''.join(pack(fmt, float(syn_rel[t.getSynthIndex()])) for t in tracks)
+        tex += b''.join(pack(fmt, float(syn_pre[t.getSynthIndex()])) for t in tracks)
+        tex += b''.join(pack(fmt, float(syn_slide[t.getSynthIndex()])) for t in tracks)
+        tex += b''.join(pack(fmt, float(m.mod_on)) for t in tracks for m in t.modules)
+        tex += b''.join(pack(fmt, float(m.getModuleOff())) for t in tracks for m in t.modules)
+        tex += b''.join(pack(fmt, float(patterns.index(m.pattern))) for t in tracks for m in t.modules)
+        tex += b''.join(pack(fmt, float(m.transpose)) for t in tracks for m in t.modules)
+        tex += b''.join(pack(fmt, float(s)) for s in pattern_sep)
+        tex += b''.join(pack(fmt, float(n.note_on)) for p in patterns for n in p.notes)
+        tex += b''.join(pack(fmt, float(n.note_off)) for p in patterns for n in p.notes)
+        tex += b''.join(pack(fmt, float(n.note_pitch)) for p in patterns for n in p.notes)
+        tex += b''.join(pack(fmt, float(n.note_pan * .01)) for p in patterns for n in p.notes)
+        tex += b''.join(pack(fmt, float(n.note_vel * .01)) for p in patterns for n in p.notes)
+        tex += b''.join(pack(fmt, float(n.note_slide)) for p in patterns for n in p.notes)
+        tex += b''.join(pack(fmt, float(n.note_aux)) for p in patterns for n in p.notes)
+        tex += b''.join(pack(fmt, float(d)) for d in drum_rel)
 
-        # TODO:make it more pythonesk with something like
-        # tex += ''.join(pack(fmt, float(s)) for s in track_sep)
-        # etc.
-
-        for s in track_sep:
-            tex += pack(fmt, float(s))
-        for t in tracks:
-            tex += pack(fmt, float(t.getSynthIndex()+1))
-        for t in tracks:
-            tex += pack(fmt, float(t.getNorm()))
-        for t in tracks:
-            tex += pack(fmt, float(syn_rel[t.getSynthIndex()]))
-        for t in tracks:
-            tex += pack(fmt, float(syn_pre[t.getSynthIndex()]))
-        for t in tracks:
-            tex += pack(fmt, float(syn_slide[t.getSynthIndex()]))
-        for t in tracks:
-            for m in t.modules:
-                tex += pack(fmt, float(m.mod_on))
-        for t in tracks:
-            for m in t.modules:
-                tex += pack(fmt, float(m.getModuleOff()))
-        for t in tracks:
-            for m in t.modules:
-                tex += pack(fmt, float(patterns.index(m.pattern)))
-        for t in tracks:
-            for m in t.modules:
-                tex += pack(fmt, float(m.transpose))
-        for s in pattern_sep:
-            tex += pack(fmt, float(s))
-        for p in patterns:
-            for n in p.notes:
-                tex += pack(fmt, float(n.note_on))
-        for p in patterns:
-            for n in p.notes:
-                tex += pack(fmt, float(n.note_off))
-        for p in patterns:
-            for n in p.notes:
-                tex += pack(fmt, float(n.note_pitch))
-        for p in patterns:
-            for n in p.notes:
-                tex += pack(fmt, float(n.note_pan * .01))
-        for p in patterns:
-            for n in p.notes:
-                tex += pack(fmt, float(n.note_vel * .01))
-        for p in patterns:
-            for n in p.notes:
-                tex += pack(fmt, float(n.note_slide))
-        for p in patterns:
-            for n in p.notes:
-                tex += pack(fmt, float(n.note_aux))
-        for d in drum_rel:
-            tex += pack(fmt, float(d))
-
+        while len(tex) % 4 != 0:
+            tex += bytes(1)
         texlength = int(len(tex))
-        while ((texlength % 4) != 0):
-            tex += bytes(10)
-            texlength += 1
 
         texs = str(int(ceil(sqrt(float(texlength)/4.))))
+        tex_n = int(ceil(texlength/2))
 
         # Generate output header file
         array = []
         arrayf = []
         for i in range(int(ceil(texlength/2))):
-            array += [ unpack('@H', tex[2*i:2*i+2]) ][0]
-            arrayf += [ unpack(fmt, tex[2*i:2*i+2]) ][0]
+            array += unpack('<H', tex[2*i:2*i+2])
+            arrayf += unpack(fmt, tex[2*i:2*i+2])
 
         text = "// Generated by tx210 / aMaySyn (c) 2018 NR4&QM/Team210\n\n#ifndef SEQUENCE_H\n#define SEQUENCE_H\n\n"
-        text += "// Data:\n//"
-        for val in arrayf:
-            text += ' ' + str(val) + ','
-        text += '\n'
-        text += "const unsigned short sequence_texture[{:d}]".format(int(ceil(texlength/2)))+" = {"
-        for val in array[:-1]:
-            text += str(val) + ','
-        text += str(array[-1]) + '};\n'
-        text += "const int sequence_texture_size = " + str(texs) + ";"
+        text += f"// Data:\n//{', '.join(str(val) for val in arrayf)}\n"
+        text += f"const unsigned short sequence_texture[{tex_n}] = {{{','.join(str(val) for val in array)}}};\n"
+        text += f"const int sequence_texture_size = {texs};"
         text += '\n#endif\n'
 
-        self.sequence_texture_size = texs
-        self.sequence_texture = array
+        self.sequence = array
 
         # Write to file
         with open("sequence.h", "wt") as f:
@@ -401,16 +358,15 @@ class aMaySynBuilder:
 
         glslcode_frag = '#version 130\n' + glslcode.replace("//TEXTUREHEADER", texheadcode)
 
-        filename_frag = 'sfx.frag' # f"{self.getInfo('title')}.frag"
+        filename_frag = 'sfx.frag'
 
         with open(filename_frag, 'w') as out_file:
             out_file.write(glslcode_frag)
 
-        print("GLSL CODE WRITTEN (sfx.frag) -- NR4-compatible fragment shader")
+        print(f"GLSL CODE WRITTEN ({filename_frag}) -- NR4-compatible fragment shader")
 
         # for "standalone" version
-        tex_n = str(int(ceil(texlength/2)))
-        texcode = 'const float sequence_texture[' + tex_n + '] = float[' + tex_n + '](' + ','.join(map(GLfloat, arrayf)) + ');\n'
+        texcode = f"const float sequence_texture[{tex_n}] = float[{tex_n}]({','.join(map(GLfloat, arrayf))});\n"
 
         glslcode = self.shaderHeader + glslcode
 
@@ -488,7 +444,7 @@ class aMaySynBuilder:
                                 + '\t'.join((rnd['id'] + '=' + str(rnd['value'])) for rnd in self.stored_randoms if rnd['store']) + '\n')
 
 
-        prefer_sequence_texture = False # if this is True: ignore 'shader' completely and use [self.fragment_shader, self.sequence_texture, self.sequence_texture_size]
+        prefer_sequence_texture = False # if this is True: ignore 'shader' completely and use [self.fragment_shader, self.sequence]
         if prefer_sequence_texture:
             print("THIS DOES NOT WORK AND HAS TO BE FIXED. SET prefer_sequence_texture to FALSE!")
 
@@ -496,9 +452,9 @@ class aMaySynBuilder:
 
         glwidget = SFXGLWidget(self.parent, duration = self.song_length, samplerate = samplerate, texsize = texsize)
         if prefer_sequence_texture and self.fragment_shader is not None:
-            glwidget.initSequenceTexture(self.sequence_texture, self.sequence_texture_size)
+            glwidget.setSequenceTexture(self.sequence)
             glwidget.show()
-            log = glwidget.computeShader(self.fragment_shader, useSequenceTexture = True)
+            log = glwidget.computeShader(self.fragment_shader)
         else:
             glwidget.show()
             log = glwidget.computeShader(shader)
