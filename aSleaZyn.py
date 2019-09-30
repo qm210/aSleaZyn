@@ -632,8 +632,8 @@ class SleaZynth(QMainWindow):
         self.ui.codeEditor.ensureCursorVisible()
 
         sequenceLength = len(self.amaysyn.sequence) if self.amaysyn.sequence is not None else 0
-        if sequenceLength > pow(2, 14):
-            QMessageBox.critical(self, "I CAN'T", f"Until QM figured out how to implement the sequence texture in PyQt, reduce the sequence size by limiting the offset/stop positions or muting tracks.\nCurrent sequence length is:\n{sequenceLength} > {pow(2,14)}")
+        if not self.amaysyn.useSequenceTexture and sequenceLength > pow(2, 14):
+            QMessageBox.critical(self, "I CAN'T", f"Either switch to using the Sequence Texture (ask QM), or reduce the sequence size by limiting the offset/stop positions or muting tracks.\nCurrent sequence length is:\n{sequenceLength} > {pow(2,14)}")
             return
 
         self.bytearray = self.amaysyn.executeShader(shader, self.samplerate, self.texsize, renderWAV = self.state['writeWAV'])

@@ -50,13 +50,13 @@ class SFXGLWidget(QOpenGLWidget):
         self.nblocks = int(ceil(float(self.nsamples)/float(self.blocksize)))
         self.nsamples_real = self.nblocks*self.blocksize # this too was *2
         self.duration_real = float(self.nsamples_real)/float(self.samplerate)
-        self.image = None
         self.music = None
         self.floatmusic = None
         self.moreUniforms = moreUniforms
         self.sequence_texture_handle = None
         self.sequence_texture = None
         self.sequence_texture_size = None
+        self.setTextureFormat(GL_RGBA)
 
     def initializeGL(self):
         print("Init.")
@@ -67,10 +67,13 @@ class SFXGLWidget(QOpenGLWidget):
         self.framebuffer = glGenFramebuffers(1)
         glBindFramebuffer(GL_FRAMEBUFFER, self.framebuffer)
         print("Bound buffer with id", self.framebuffer)
+        glPixelStorei(GL_PACK_ALIGNMENT, 4)
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
+
         self.texture = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, self.texture)
         print("Bound texture with id", self.texture)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.texsize, self.texsize, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.image)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.texsize, self.texsize, 0, GL_RGBA, GL_UNSIGNED_BYTE, None)
         print("Teximage2D returned.")
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
@@ -80,23 +83,18 @@ class SFXGLWidget(QOpenGLWidget):
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self.texture, 0)
 
 
-    def setSequenceTexture(self, sequence):
-        self.sequence_texture = np.array(sequence, dtype = np.int16)
-        self.sequence_texture_size = ceil(sqrt(len(sequence)/4.))
+    def setTextureFromSequence(self, sequence):
+        #self.sequence_texture = np.array(sequence, dtype = np.uint32)
+        self.sequence_texture = sequence
+        self.sequence_texture_size = ceil(sqrt(len(sequence)))
 
         print('size:', self.sequence_texture_size, '\n')
-        c = 0
-        for s,t in zip(self.sequence_texture, sequence):
-            print(s, t)
-            c += 1
-            if c > 100:
-                break
-
+        for c,s,t in zip(range(100), self.sequence_texture, sequence):
+            print(c, s, t, sep='\t')
+        print('...')
 
     def initSequenceTexture(self):
         print("Init Sequence Texture. DOES NOT WORK..!")
-
-        glActiveTexture(GL_TEXTURE0)
 
         # port of NR4s C code...
         self.sequence_texture_handle = glGenTextures(1)
@@ -106,10 +104,7 @@ class SFXGLWidget(QOpenGLWidget):
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT)
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.sequence_texture_size, self.sequence_texture_size, 0, GL_RGBA, GL_UNSIGNED_SHORT, self.sequence_texture)
-
-        glPixelStorei(GL_PACK_ALIGNMENT, 4)
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 4)
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self.sequence_texture_size, self.sequence_texture_size, 0, GL_RGBA, GL_UNSIGNED_BYTE, self.sequence_texture)
 
 
     def computeShader(self, source) :
@@ -164,6 +159,7 @@ class SFXGLWidget(QOpenGLWidget):
             glUniform1i(self.sfx_sequence_texture_location, 0)
             glUniform1f(self.sfx_sequence_texture_width_location, np.float32(self.sequence_texture_size))
             glActiveTexture(GL_TEXTURE0)
+            print("handle", self.sequence_texture_handle)
             glBindTexture(GL_TEXTURE_2D, self.sequence_texture_handle)
 
         for i in range(self.nblocks) :
