@@ -48,6 +48,9 @@ border-width: 2px;</string>
     <property name="styleSheet">
      <string notr="true"/>
     </property>
+    <property name="horizontalScrollBarPolicy">
+     <enum>Qt::ScrollBarAlwaysOff</enum>
+    </property>
    </widget>
    <widget class="QPushButton" name="btnTrackClone">
     <property name="geometry">
@@ -106,7 +109,7 @@ border-width: 2px;</string>
      <rect>
       <x>473</x>
       <y>80</y>
-      <width>71</width>
+      <width>61</width>
       <height>33</height>
      </rect>
     </property>
@@ -142,9 +145,9 @@ border-width: 2px;</string>
    <widget class="QListView" name="moduleList">
     <property name="geometry">
      <rect>
-      <x>550</x>
+      <x>540</x>
       <y>120</y>
-      <width>261</width>
+      <width>251</width>
       <height>221</height>
      </rect>
     </property>
@@ -155,9 +158,9 @@ border-width: 2px;</string>
    <widget class="QListView" name="noteList">
     <property name="geometry">
      <rect>
-      <x>820</x>
+      <x>810</x>
       <y>120</y>
-      <width>291</width>
+      <width>301</width>
       <height>221</height>
      </rect>
     </property>
@@ -231,7 +234,7 @@ border-width: 2px;</string>
    <widget class="QLabel" name="labelTrackMods">
     <property name="geometry">
      <rect>
-      <x>550</x>
+      <x>540</x>
       <y>60</y>
       <width>261</width>
       <height>19</height>
@@ -247,7 +250,7 @@ border-width: 2px;</string>
    <widget class="QLabel" name="labelPatternNotes">
     <property name="geometry">
      <rect>
-      <x>820</x>
+      <x>810</x>
       <y>60</y>
       <width>261</width>
       <height>19</height>
@@ -263,9 +266,9 @@ border-width: 2px;</string>
    <widget class="QComboBox" name="patternCombox">
     <property name="geometry">
      <rect>
-      <x>860</x>
+      <x>850</x>
       <y>80</y>
-      <width>251</width>
+      <width>261</width>
       <height>31</height>
      </rect>
     </property>
@@ -273,7 +276,7 @@ border-width: 2px;</string>
    <widget class="QPushButton" name="btnApplyPattern">
     <property name="geometry">
      <rect>
-      <x>820</x>
+      <x>810</x>
       <y>80</y>
       <width>41</width>
       <height>31</height>
@@ -327,7 +330,7 @@ border-width: 2px;</string>
      <rect>
       <x>450</x>
       <y>340</y>
-      <width>91</width>
+      <width>81</width>
       <height>41</height>
      </rect>
     </property>
@@ -338,7 +341,7 @@ border-width: 2px;</string>
    <widget class="QSpinBox" name="spinModOn">
     <property name="geometry">
      <rect>
-      <x>550</x>
+      <x>540</x>
       <y>80</y>
       <width>101</width>
       <height>33</height>
@@ -357,7 +360,7 @@ border-width: 2px;</string>
    <widget class="QSpinBox" name="spinModTranspose">
     <property name="geometry">
      <rect>
-      <x>683</x>
+      <x>660</x>
       <y>80</y>
       <width>131</width>
       <height>33</height>
@@ -379,9 +382,9 @@ border-width: 2px;</string>
    <widget class="QLineEdit" name="editNote">
     <property name="geometry">
      <rect>
-      <x>820</x>
-      <y>370</y>
-      <width>291</width>
+      <x>810</x>
+      <y>340</y>
+      <width>271</width>
       <height>31</height>
      </rect>
     </property>
@@ -395,28 +398,31 @@ border-width: 2px;</string>
      </font>
     </property>
     <property name="toolTip">
-     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Note Parameters or Pattern Command&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;pitch [on, off] (vel, pan, slide, aux)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+    <property name="placeholderText">
+     <string>pitch [on, off] (vel, pan, slide, aux)</string>
     </property>
    </widget>
    <widget class="QPushButton" name="btnApplyNote">
     <property name="geometry">
      <rect>
-      <x>1030</x>
+      <x>1080</x>
       <y>340</y>
-      <width>81</width>
+      <width>31</width>
       <height>31</height>
      </rect>
     </property>
     <property name="text">
-     <string>^^ apply</string>
+     <string>^^</string>
     </property>
    </widget>
-   <widget class="QCheckBox" name="checkAutoRender">
+   <widget class="QCheckBox" name="checkAutoReimport">
     <property name="geometry">
      <rect>
       <x>620</x>
-      <y>20</y>
-      <width>201</width>
+      <y>10</y>
+      <width>251</width>
       <height>21</height>
      </rect>
     </property>
@@ -424,7 +430,7 @@ border-width: 2px;</string>
      <string notr="true">border: none;</string>
     </property>
     <property name="text">
-     <string>Auto Render On Change</string>
+     <string>Auto Re-Import On File Change</string>
     </property>
    </widget>
    <widget class="QLineEdit" name="editFilename">
@@ -518,7 +524,7 @@ border-width: 2px;</string>
     <property name="geometry">
      <rect>
       <x>280</x>
-      <y>120</y>
+      <y>110</y>
       <width>71</width>
       <height>21</height>
      </rect>
@@ -534,9 +540,9 @@ border-width: 2px;</string>
     <property name="geometry">
      <rect>
       <x>280</x>
-      <y>140</y>
-      <width>261</width>
-      <height>201</height>
+      <y>130</y>
+      <width>251</width>
+      <height>211</height>
      </rect>
     </property>
     <property name="horizontalScrollBarPolicy">
@@ -546,9 +552,9 @@ border-width: 2px;</string>
    <widget class="QPushButton" name="btnExport">
     <property name="geometry">
      <rect>
-      <x>840</x>
+      <x>870</x>
       <y>10</y>
-      <width>271</width>
+      <width>241</width>
       <height>41</height>
      </rect>
     </property>
@@ -641,35 +647,10 @@ PERKELE!</string>
      <string>BPM array:</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_5">
-    <property name="geometry">
-     <rect>
-      <x>820</x>
-      <y>340</y>
-      <width>211</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Comic Sans MS</family>
-      <pointsize>11</pointsize>
-      <weight>50</weight>
-      <italic>false</italic>
-      <bold>false</bold>
-     </font>
-    </property>
-    <property name="styleSheet">
-     <string notr="true">border: none;</string>
-    </property>
-    <property name="text">
-     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:9pt;&quot;&gt;pitch [on, off] (vel, pan, slide, aux)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-    </property>
-   </widget>
    <widget class="QLineEdit" name="editSynthName">
     <property name="geometry">
      <rect>
-      <x>540</x>
+      <x>530</x>
       <y>350</y>
       <width>201</width>
       <height>31</height>
@@ -682,7 +663,7 @@ PERKELE!</string>
    <widget class="QPushButton" name="btnApplySynthName">
     <property name="geometry">
      <rect>
-      <x>740</x>
+      <x>730</x>
       <y>350</y>
       <width>51</width>
       <height>31</height>
@@ -723,7 +704,7 @@ PERKELE!</string>
      <rect>
       <x>600</x>
       <y>390</y>
-      <width>41</width>
+      <width>51</width>
       <height>31</height>
      </rect>
     </property>
@@ -739,7 +720,7 @@ PERKELE!</string>
      <rect>
       <x>650</x>
       <y>390</y>
-      <width>81</width>
+      <width>91</width>
       <height>33</height>
      </rect>
     </property>
@@ -762,9 +743,9 @@ PERKELE!</string>
    <widget class="QDoubleSpinBox" name="spinLevelDrum">
     <property name="geometry">
      <rect>
-      <x>730</x>
+      <x>740</x>
       <y>390</y>
-      <width>81</width>
+      <width>91</width>
       <height>33</height>
      </rect>
     </property>
@@ -779,6 +760,63 @@ PERKELE!</string>
     </property>
     <property name="singleStep">
      <double>0.050000000000000</double>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label_7">
+    <property name="geometry">
+     <rect>
+      <x>940</x>
+      <y>390</y>
+      <width>71</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border: none;</string>
+    </property>
+    <property name="text">
+     <string>timeshift:</string>
+    </property>
+   </widget>
+   <widget class="QDoubleSpinBox" name="spinTimeShift">
+    <property name="geometry">
+     <rect>
+      <x>1020</x>
+      <y>390</y>
+      <width>91</width>
+      <height>33</height>
+     </rect>
+    </property>
+    <property name="prefix">
+     <string/>
+    </property>
+    <property name="suffix">
+     <string> s</string>
+    </property>
+    <property name="decimals">
+     <number>2</number>
+    </property>
+    <property name="maximum">
+     <double>999.990000000000009</double>
+    </property>
+    <property name="singleStep">
+     <double>1.000000000000000</double>
+    </property>
+   </widget>
+   <widget class="QCheckBox" name="checkAutoRender">
+    <property name="geometry">
+     <rect>
+      <x>620</x>
+      <y>30</y>
+      <width>221</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">border: none;</string>
+    </property>
+    <property name="text">
+     <string>Auto Render On Re-Import</string>
     </property>
    </widget>
   </widget>

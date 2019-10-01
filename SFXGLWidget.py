@@ -28,7 +28,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from math import ceil, sqrt
+from math import ceil, floor, sqrt
 from struct import pack, unpack
 import numpy as np
 
@@ -88,15 +88,7 @@ class SFXGLWidget(QOpenGLWidget):
         self.sequence_texture = sequence
         self.sequence_texture_size = ceil(sqrt(len(sequence)))
 
-        print('size:', self.sequence_texture_size, '\n')
-        for c,s,t in zip(range(100), self.sequence_texture, sequence):
-            print(c, s, t, sep='\t')
-        print('...')
-
     def initSequenceTexture(self):
-        print("Init Sequence Texture. DOES NOT WORK..!")
-
-        # port of NR4s C code...
         self.sequence_texture_handle = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, self.sequence_texture_handle)
         print("Bound texture with id", self.sequence_texture_handle, "(for sequence)")
@@ -155,7 +147,7 @@ class SFXGLWidget(QOpenGLWidget):
 
         glUniform1f(self.iTexSizeLocation, np.float32(self.texsize))
         glUniform1f(self.iSampleRateLocation, np.float32(self.samplerate))
-        if useSequenceTexture: # DOESN'T WORK YET
+        if useSequenceTexture:
             glUniform1i(self.sfx_sequence_texture_location, 0)
             glUniform1f(self.sfx_sequence_texture_width_location, np.float32(self.sequence_texture_size))
             glActiveTexture(GL_TEXTURE0)

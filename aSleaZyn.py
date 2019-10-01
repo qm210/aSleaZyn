@@ -77,6 +77,7 @@ class SleaZynth(QMainWindow):
         self.ui.btnChooseFilename.clicked.connect(self.loadAndImportMayson)
         self.ui.btnImport.clicked.connect(self.importMayson)
         self.ui.btnExport.clicked.connect(self.exportChangedMayson)
+        self.ui.checkAutoReimport.clicked.connect(self.toggleAutoReimport)
         self.ui.checkAutoRender.clicked.connect(self.toggleAutoRender)
 
         self.ui.editFilename.editingFinished.connect(partial(self.updateStateFromUI, only = 'maysonFile'))
@@ -86,6 +87,7 @@ class SleaZynth(QMainWindow):
         self.ui.spinLevelSyn.valueChanged.connect(partial(self.updateStateFromUI, only= 'level_syn'))
         self.ui.spinLevelDrum.valueChanged.connect(partial(self.updateStateFromUI, only= 'level_drum'))
         self.ui.checkWriteWAV.clicked.connect(partial(self.updateStateFromUI, only = 'writeWAV'))
+        self.ui.spinTimeShift.valueChanged.connect(partial(self.updateStateFromUI, only = 'extraTimeShift'))
 
         self.ui.editTrackName.textChanged.connect(self.trackSetName)
         self.ui.spinTrackVolume.valueChanged.connect(self.trackSetVolume)
@@ -137,11 +139,13 @@ class SleaZynth(QMainWindow):
     def initState(self):
         self.state = {
             'maysonFile': '',
+            'autoReimport': False,
             'autoRender': False,
             'lastRendered': '',
             'writeWAV': False,
             'selectedTrack': 0,
             'selectedModule': 0,
+            'extraTimeShift': 0,
             }
         self.info = {}
         self.patterns = []
@@ -179,6 +183,9 @@ class SleaZynth(QMainWindow):
 
         self.info = maysonData['info']
         self.info.update({'title': self.state['title']})
+        if self.amaysyn is not None:
+            self.amaysyn.updateState(info = self.info)
+
         self.trackModel.setTracks(maysonData['tracks'])
         self.patternModel.setPatterns(maysonData['patterns'])
         self.synthModel.setStringList(maysonData['synths'])
@@ -240,6 +247,8 @@ class SleaZynth(QMainWindow):
             self.info['level_drum'] == self.ui.spinLevelDrum.value()
         if only is None or only == 'writeWAV':
             self.state['writeWAV'] = self.ui.checkWriteWAV.isChecked()
+        if only is None or only == 'extraTimeShift':
+            self.state['extraTimeShift'] = self.ui.spinTimeShift.value()
 
         if self.amaysyn is not None:
             self.amaysyn.updateState(info = self.info, synFile = synFile)
@@ -252,8 +261,10 @@ class SleaZynth(QMainWindow):
         self.ui.spinBStop.setValue(self.info['B_stop'])
         self.ui.spinLevelSyn.setValue(self.info['level_syn'])
         self.ui.spinLevelDrum.setValue(self.info['level_drum'])
+        self.ui.checkAutoReimport.setChecked(self.state['autoReimport'])
         self.ui.checkAutoRender.setChecked(self.state['autoRender'])
         self.ui.checkWriteWAV.setChecked(self.state['writeWAV'])
+        self.ui.spinTimeShift.setValue(self.state['extraTimeShift'])
 
     def autoSave(self):
         file = open(self.autoSaveFile, 'w')
@@ -272,16 +283,19 @@ class SleaZynth(QMainWindow):
         for key in loadState:
             self.state[key] = loadState[key]
 
-        if 'autoRender' in self.state:
-            self.toggleAutoRender(self.state['autoRender'])
+        if 'autoReimport' in self.state:
+            self.toggleAutoReimport(self.state['autoReimport'])
         if 'maysonFile' not in self.state or self.state['maysonFile'] == '':
             self.loadAndImportMayson()
         else:
             self.importMayson()
 
-
     def toggleAutoRender(self, checked):
         self.state['autoRender'] = checked
+        self.autoSave()
+
+    def toggleAutoReimport(self, checked):
+        self.state['autoReimport'] = checked
         self.autoSave()
 
         if self.fileObserver is not None:
@@ -292,7 +306,7 @@ class SleaZynth(QMainWindow):
         if checked:
             file = self.state['maysonFile']
             eventHandler = FileModifiedHandler(file)
-            eventHandler.fileChanged.connect(self.importAndRender)
+            eventHandler.fileChanged.connect(self.importAndRender if self.state['autoRender'] else self.importMayson)
             self.fileObserver = Observer()
             self.fileObserver.schedule(eventHandler, path=path.dirname(file), recursive = False)
             self.fileObserver.start()
@@ -300,9 +314,8 @@ class SleaZynth(QMainWindow):
     def importAndRender(self):
         self.importMayson()
         if self.amaysyn is None:
-            print("why is aMaySyn not initialized? do something about it!")
+            print("You want to Reimport&Render, but why is aMaySyn not initialized? do some rendering first!")
             return
-        self.amaysyn.updateState(info = self.info)
         self.renderWhateverWasLast()
 
 #################################### GENERAL HELPERS ###########################################
@@ -608,6 +621,7 @@ class SleaZynth(QMainWindow):
         modInfo['B_offset'] = self.module()['mod_on']
         modInfo['B_stop'] = self.module()['mod_on'] + self.module()['pattern']['length']
         self.amaysyn.info = modInfo
+        self.amaysyn.extra_time_shift = self.state['extraTimeShift']
         shader = self.amaysyn.build(tracks = [self.track()], patterns = [self.module()['pattern']])
         self.amaysyn.info = self.info
         self.track()['mute'] = restoreMute
@@ -617,12 +631,14 @@ class SleaZynth(QMainWindow):
         self.state['lastRendered'] = 'track'
         restoreMute = self.track()['mute']
         self.track()['mute'] = False
+        self.amaysyn.extra_time_shift = self.state['extraTimeShift']
         shader = self.amaysyn.build(tracks = [self.track()], patterns = self.patternModel.patterns)
         self.track()['mute'] = restoreMute
         self.executeShader(shader)
 
     def renderSong(self):
         self.state['lastRendered'] = 'song'
+        self.amaysyn.extra_time_shift = self.state['extraTimeShift']
         shader = self.amaysyn.build(tracks = self.trackModel.tracks, patterns = self.patternModel.patterns)
         self.executeShader(shader)
 

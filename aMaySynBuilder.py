@@ -47,14 +47,18 @@ class aMaySynBuilder:
         self.fragment_shader = None
         self.sequence = []
 
+        # debug stuff
+        self.extra_time_shift = 0
 
-    def updateState(self, info = None, synFile = None, stored_randoms = None):
+    def updateState(self, info = None, synFile = None, stored_randoms = None, extra_time_shift = None):
         if info is not None:
             self.info = info
         if synFile is not None:
             self.synFile = synFile
         if stored_randoms is not None:
             self.stored_randoms = stored_randoms
+        if extra_time_shift is not None:
+            self.extra_time_shift = extra_time_shift
 
     def initWavOut(self, outdir = None):
         self.MODE_renderwav = True
@@ -281,7 +285,10 @@ class aMaySynBuilder:
 
         loopcode = ('time = mod(time, ' + GLfloat(self.song_length) + ');\n' + 4*' ') if loop_mode != 'none' else ''
 
-        if offset != 0: loopcode += 'time += ' + GLfloat(time_offset) + ';\n' + 4*' '
+        if offset != 0:
+            loopcode += f'time += {GLfloat(time_offset)};\n    '
+        if self.extra_time_shift > 0:
+            loopcode += f'time += {GLfloat(self.extra_time_shift)};\n    '
 
         print("SONG LENGTH: ", self.song_length)
 
