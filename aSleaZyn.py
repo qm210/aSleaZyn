@@ -384,7 +384,7 @@ class SleaZynth(QMainWindow):
         self.ui.editSynthName.setText(self.synthName())
         self.trackModelChanged()
 
-        if self.synthName()[0] == 'D':
+        if self.synth()[0] == 'D':
             self.noteModel.useDrumkit(self.drumModel.stringList())
         else:
             self.noteModel.useDrumkit(None)

@@ -843,6 +843,48 @@ PERKELE!</string>
    </property>
   </action>
  </widget>
+ <tabstops>
+  <tabstop>btnChooseFilename</tabstop>
+  <tabstop>editFilename</tabstop>
+  <tabstop>btnImport</tabstop>
+  <tabstop>checkAutoReimport</tabstop>
+  <tabstop>checkAutoRender</tabstop>
+  <tabstop>btnExport</tabstop>
+  <tabstop>trackList</tabstop>
+  <tabstop>checkTrackMute</tabstop>
+  <tabstop>editTrackName</tabstop>
+  <tabstop>spinTrackVolume</tabstop>
+  <tabstop>btnTrackClone</tabstop>
+  <tabstop>btnTrackDelete</tabstop>
+  <tabstop>btnReloadSyn</tabstop>
+  <tabstop>synthList</tabstop>
+  <tabstop>btnRandomSynth</tabstop>
+  <tabstop>btnRandomizeSynth</tabstop>
+  <tabstop>btnSaveSynth</tabstop>
+  <tabstop>spinModOn</tabstop>
+  <tabstop>spinModTranspose</tabstop>
+  <tabstop>moduleList</tabstop>
+  <tabstop>editSynthName</tabstop>
+  <tabstop>btnApplySynthName</tabstop>
+  <tabstop>btnApplyPattern</tabstop>
+  <tabstop>patternCombox</tabstop>
+  <tabstop>noteList</tabstop>
+  <tabstop>editNote</tabstop>
+  <tabstop>btnApplyNote</tabstop>
+  <tabstop>drumList</tabstop>
+  <tabstop>editBPM</tabstop>
+  <tabstop>spinLevelSyn</tabstop>
+  <tabstop>spinLevelDrum</tabstop>
+  <tabstop>spinTimeShift</tabstop>
+  <tabstop>btnRenderModule</tabstop>
+  <tabstop>btnRenderTrack</tabstop>
+  <tabstop>btnRenderSong</tabstop>
+  <tabstop>spinBOffset</tabstop>
+  <tabstop>spinBStop</tabstop>
+  <tabstop>checkWriteWAV</tabstop>
+  <tabstop>btnStopPlayback</tabstop>
+  <tabstop>codeEditor</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
