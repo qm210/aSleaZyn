@@ -21,6 +21,7 @@ from shutil import move
 from functools import partial
 from time import sleep
 from copy import deepcopy
+from itertools import accumulate
 import json
 
 from aSleaZynUI import Ui_MainWindow
@@ -56,6 +57,9 @@ class SleaZynth(QMainWindow):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
+
+        elif event.key() == Qt.Key_F1:
+            self.debugOutput()
 
         if event.modifiers() & Qt.ControlModifier:
 
@@ -659,6 +663,31 @@ class SleaZynth(QMainWindow):
         self.audiooutput.start(self.audiobuffer)
 
 
+###################################### DEBUG STUFF #############################################
+
+    def debugOutput(self):
+        print("TRACKS:", self.trackModel.rowCount())
+        print("===== TRACK ACCUMULATION =====")
+        track_accumulate = 0
+        for t in self.trackModel.tracks:
+            delta = len(t['modules'])
+            print(f"{t['name']:>20} {track_accumulate:>10} {track_accumulate + delta:>10}")
+            track_accumulate += delta
+        print("END AT", track_accumulate)
+        print()
+        print("PATTERNS:", self.patternModel.rowCount())
+        print("===== PATTERN ACCUMULATION =====")
+        pattern_accumulate = 0
+        for p in self.patternModel.patterns:
+            delta = len(p['notes'])
+            print(f"{p['name']:>20} {pattern_accumulate:>10} {pattern_accumulate + delta:>10}")
+            pattern_accumulate += delta
+        print("END AT", pattern_accumulate)
+        track_sep = [0] + list(accumulate([len(t['modules']) for t in self.trackModel.tracks]))
+        pattern_sep = [0] + list(accumulate([len(p['notes']) for p in self.patternModel.patterns]))
+        print()
+        print(track_sep)
+        print(pattern_sep)
 
 ################################################################################################
 

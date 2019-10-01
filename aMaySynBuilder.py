@@ -142,6 +142,13 @@ class aMaySynBuilder:
 
 ############################################### BUILD #####################################################
 
+    def patternIndex(self, module_pattern, pattern_list):
+        for index, pattern in enumerate(pattern_list):
+            if pattern.name == module_pattern.name:
+                return index
+        print(f"pattern with name {module_pattern.name} not found in pattern list:\n", pattern_list)
+        raise ValueError
+
     def build(self, tracks, patterns, renderWAV = False):
         if not self.aMaySynFileExists():
             print(f"Tried to build GLSL without valid aMaySyn-File ({self.synFile}). No can't do.\n")
@@ -151,15 +158,22 @@ class aMaySynBuilder:
         stop = self.getInfo('B_stop')
         reduced_tracks = []
         actually_used_patterns = []
+        actually_used_pattern_names = []
         for track in tracks:
             t = decodeTrack(track)
             if t.modules and not t.mute:
                 t.modules = [m for m in t.modules if m.getModuleOff() > offset and m.getModuleOn() < stop]
                 if t.modules:
                     reduced_tracks.append(t)
-                    actually_used_patterns += [m.pattern for m in t.modules if m.pattern not in actually_used_patterns]
+                    for m in t.modules:
+                        if m.pattern.name not in actually_used_pattern_names:
+                            actually_used_patterns.append(m.pattern)
+                            actually_used_pattern_names.append(m.pattern.name)
+
         tracks = reduced_tracks
         patterns = actually_used_patterns
+        for n in actually_used_pattern_names:
+            print(n)
 
         if len(tracks) == 0:
             print("Nothing to play..!")
@@ -171,7 +185,7 @@ class aMaySynBuilder:
 
         filename = self.getInfo('title') + '.glsl'
 
-        print('\nUSE TRACKS: ', tracks, '\nUSE PATTERNS: ', patterns, '\n')
+        #print('\nUSE TRACKS: ', tracks, '\nUSE PATTERNS: ', patterns, '\n')
 
         # TODO: after several changes, I'm not sure whether this is now still required or makes any sense at all, even..!
         self.module_shift = offset
@@ -198,6 +212,9 @@ class aMaySynBuilder:
         nM  = str(track_sep[-1])
         nP  = str(len(patterns))
         nN  = str(pattern_sep[-1])
+
+        print("track_sep =", track_sep)
+        print("pattern_sep =", pattern_sep)
 
         gf = open(self.templateFile)
         glslcode = gf.read()
@@ -292,6 +309,16 @@ class aMaySynBuilder:
 
         print("SONG LENGTH: ", self.song_length)
 
+        # check for unused features
+        if all(n.note_pan == 0 for p in patterns for n in p.notes):
+            print("HINT: you didn't use any note_pan, might want to remove manually")
+        if all(n.note_vel == 100 for p in patterns for n in p.notes):
+            print("HINT: you didn't use any note_vel (other than 1.0), might want to remove manually")
+        if all(n.note_slide == 0 for p in patterns for n in p.notes):
+            print("HINT: you didn't use any note_slide, might want to remove manually")
+        if all(n.note_aux == 0 for p in patterns for n in p.notes):
+            print("HINT: you didn't use any note_aux, might want to remove manually")
+
         print("START TEXTURE")
 
         fmt = '@e'
@@ -304,7 +331,7 @@ class aMaySynBuilder:
         tex += b''.join(pack(fmt, float(syn_slide[t.getSynthIndex()])) for t in tracks)
         tex += b''.join(pack(fmt, float(m.mod_on)) for t in tracks for m in t.modules)
         tex += b''.join(pack(fmt, float(m.getModuleOff())) for t in tracks for m in t.modules)
-        tex += b''.join(pack(fmt, float(patterns.index(m.pattern))) for t in tracks for m in t.modules)
+        tex += b''.join(pack(fmt, float(self.patternIndex(m.pattern, patterns))) for t in tracks for m in t.modules)
         tex += b''.join(pack(fmt, float(m.transpose)) for t in tracks for m in t.modules)
         tex += b''.join(pack(fmt, float(s)) for s in pattern_sep)
         tex += b''.join(pack(fmt, float(n.note_on)) for p in patterns for n in p.notes)
@@ -326,7 +353,6 @@ class aMaySynBuilder:
         # Generate output header file
         array = []
         arrayf = []
-        array4 = []
         for i in range(int(ceil(texlength/2))):
             array += unpack('@H', tex[2*i:2*i+2])
             arrayf += unpack(fmt, tex[2*i:2*i+2])
