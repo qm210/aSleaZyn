@@ -683,11 +683,7 @@ class SleaZynth(QMainWindow):
             print(f"{p['name']:>20} {pattern_accumulate:>10} {pattern_accumulate + delta:>10}")
             pattern_accumulate += delta
         print("END AT", pattern_accumulate)
-        track_sep = [0] + list(accumulate([len(t['modules']) for t in self.trackModel.tracks]))
-        pattern_sep = [0] + list(accumulate([len(p['notes']) for p in self.patternModel.patterns]))
         print()
-        print(track_sep)
-        print(pattern_sep)
 
 ################################################################################################
 
